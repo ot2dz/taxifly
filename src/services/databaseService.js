@@ -3,8 +3,6 @@ const config = require('../config');
 
 const connectDB = async () => {
   const connectOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
     serverSelectionTimeoutMS: 5000, // زيادة مهلة اختيار الخادم
     socketTimeoutMS: 45000, // زيادة مهلة العملية
     retryWrites: true,
