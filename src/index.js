@@ -1,31 +1,35 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const customerBot = require('./bots/customerBot');
 const driverBot = require('./bots/driverBot');
-const { connectDB } = require('./services/databaseService');
 const config = require('./config');
 
-// إنشاء تطبيق Express
 const app = express();
 
-// اتصال بقاعدة البيانات
-connectDB();
+app.use(bodyParser.json());
 
-// تشغيل البوتات
-customerBot;
-driverBot;
+const PORT = process.env.PORT || 3000;
 
-// إنشاء مسار بسيط للتأكد من أن التطبيق يعمل
-app.get('/', (req, res) => {
-  res.send('Taxi Service Bot is running!');
+// إعداد Webhook للبوت الخاص بالعملاء
+app.post(`/bot${config.CUSTOMER_BOT_TOKEN}`, (req, res) => {
+  customerBot.bot.processUpdate(req.body);
+  res.sendStatus(200);
 });
 
-// تشغيل الخادم
-const PORT = config.PORT || 3000;
+// إعداد Webhook للبوت الخاص بالسائقين
+app.post(`/bot${config.DRIVER_BOT_TOKEN}`, (req, res) => {
+  driverBot.bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
-// التعامل مع الأخطاء غير المتوقعة
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled Rejection:', error);
+  console.log(`Server running on port ${PORT}`);
+  
+  // ضبط Webhook للبوت الخاص بالعملاء
+  const customerWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.CUSTOMER_BOT_TOKEN}`;
+  customerBot.bot.setWebHook(customerWebhookUrl);
+  
+  // ضبط Webhook للبوت الخاص بالسائقين
+  const driverWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.DRIVER_BOT_TOKEN}`;
+  driverBot.bot.setWebHook(driverWebhookUrl);
 });

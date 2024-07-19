@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Driver = require('../models/Driver');
 const { removeRideRequest } = require('./sharedRideFunctions');
 
-const bot = new TelegramBot(config.CUSTOMER_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(config.CUSTOMER_BOT_TOKEN);
 
 const userStates = new Map();
 
