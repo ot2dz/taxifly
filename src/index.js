@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const customerBot = require('./customerBot'); // تأكد من أن المسار صحيح
-const driverBot = require('./driverBot'); // تأكد من أن المسار صحيح
+const customerBot = require('./bots/customerBot');
+const driverBot = require('./bots/driverBot');
 const config = require('./config');
 const { connectDB } = require('./databaseService'); // استيراد دالة الاتصال بقاعدة البيانات
 
