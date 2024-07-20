@@ -19,9 +19,9 @@ const CHAT_STATES = {
 const mainMenu = {
   reply_markup: {
     keyboard: [
-      ['اريد طاكسي'],
-      ['معلوماتي'],
-      ['تعديل معلوماتي']
+      ['🚖 اريد طاكسي'],
+      ['ℹ️ معلوماتي'],
+      ['✏️ تعديل معلوماتي']
     ],
     resize_keyboard: true
   }
@@ -103,13 +103,13 @@ async function handlePhoneInput(chatId, phone) {
 
 async function handleMainMenuInput(chatId, messageText) {
   switch (messageText) {
-    case 'اريد طاكسي':
+    case '🚖 اريد طاكسي':
       await requestTaxi(chatId);
       break;
-    case 'معلوماتي':
+    case 'ℹ️ معلوماتي':
       await showUserInfo(chatId);
       break;
-    case 'تعديل معلوماتي':
+    case '✏️ تعديل معلوماتي':
       userStates.set(chatId, CHAT_STATES.AWAITING_NAME);
       await bot.sendMessage(chatId, 'الرجاء إدخال اسمك الجديد:');
       break;

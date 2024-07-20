@@ -19,10 +19,9 @@ const CHAT_STATES = {
 const mainMenu = {
   reply_markup: {
     keyboard: [
-      ['تسجيل كسائق'],
-      ['معلوماتي'],
-      ['تعديل معلوماتي'],
-      ['تغيير حالة التوفر']
+      ['📝 تسجيل كسائق'],
+      ['ℹ️ معلوماتي'],
+      ['✏️ تعديل معلوماتي']
     ],
     resize_keyboard: true
   }
@@ -148,18 +147,15 @@ async function handleCarTypeInput(chatId, carType) {
 
 async function handleMainMenuInput(chatId, messageText) {
   switch (messageText) {
-    case 'تسجيل كسائق':
+    case '📝 تسجيل كسائق':
       await registerDriver(chatId);
       break;
-    case 'معلوماتي':
+    case 'ℹ️ معلوماتي':
       await showDriverInfo(chatId);
       break;
-    case 'تعديل معلوماتي':
+    case '✏️ تعديل معلوماتي':
       driverStates.set(chatId, CHAT_STATES.AWAITING_NAME);
       await bot.sendMessage(chatId, 'الرجاء إدخال اسمك الجديد:');
-      break;
-    case 'تغيير حالة التوفر':
-      await toggleAvailability(chatId);
       break;
     default:
       await bot.sendMessage(chatId, 'عذرًا، لم أفهم طلبك. الرجاء اختيار أحد الخيارات المتاحة.', mainMenu);
