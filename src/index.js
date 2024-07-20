@@ -1,8 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const customerBot = require('./bots/customerBot');
-const driverBot = require('./bots/driverBot');
+const customerBot = require('./customerBot'); // تأكد من أن المسار صحيح
+const driverBot = require('./driverBot'); // تأكد من أن المسار صحيح
 const config = require('./config');
+const { connectDB } = require('./databaseService'); // استيراد دالة الاتصال بقاعدة البيانات
 
 const app = express();
 
