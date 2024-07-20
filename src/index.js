@@ -10,6 +10,9 @@ app.use(bodyParser.json());
 
 const PORT = process.env.PORT || 3000;
 
+// اتصال بقاعدة البيانات
+connectDB(); // استدعاء دالة الاتصال بقاعدة البيانات
+
 // إعداد Webhook للبوت الخاص بالعملاء
 app.post(`/bot${config.CUSTOMER_BOT_TOKEN}`, (req, res) => {
   customerBot.bot.processUpdate(req.body);
