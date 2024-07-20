@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const customerBot = require('./bots/customerBot');
 const driverBot = require('./bots/driverBot');
 const config = require('./config');
-const { connectDB } = require('./databaseService'); // استيراد دالة الاتصال بقاعدة البيانات
+const { connectDB } = require('./services/databaseService'); // استيراد دالة الاتصال بقاعدة البيانات
 
 const app = express();
 
