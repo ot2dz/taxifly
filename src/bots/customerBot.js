@@ -155,6 +155,7 @@ async function handleAddressInput(chatId, address) {
   }
 }
 
+
 async function showUserInfo(chatId) {
   try {
     const user = await User.findOne({ telegramId: chatId });

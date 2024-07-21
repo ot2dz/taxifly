@@ -5,7 +5,7 @@ const rideRequests = new Map();
 
 function removeRideRequest(userId) {
   for (const [key, value] of rideRequests.entries()) {
-    if (value.userId === userId) {
+    if (value.userId.equals(userId)) {
       rideRequests.delete(key);
       break;
     }
@@ -13,7 +13,7 @@ function removeRideRequest(userId) {
 }
 
 function addRideRequest(rideId, userId) {
-  rideRequests.set(rideId, { userId: new mongoose.Types.ObjectId(userId), status: 'pending' });
+  rideRequests.set(rideId, { userId: mongoose.Types.ObjectId(userId), status: 'pending' });
 }
 
 function getRideRequest(rideId) {
