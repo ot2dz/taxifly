@@ -241,7 +241,7 @@ bot.on('callback_query', async (callbackQuery) => {
         rideRequest.status = 'accepted';
   
         const newRide = new Ride({
-          userId: rideRequest.userId, // إذا كان هذا هو telegramId
+          userId: new mongoose.Types.ObjectId(rideRequest.userId),
           driverId: driver._id,
           status: 'accepted'
         });
@@ -249,7 +249,7 @@ bot.on('callback_query', async (callbackQuery) => {
         await newRide.save(); // تسجيل الرحلة المقبولة في قاعدة البيانات
   
         await bot.sendMessage(driverId, 'لقد قبلت الطلب. سيتم إرسال معلوماتك للزبون.');
-  
+        console.log(`handleDriverAcceptance called with driverId: ${driverId} and userId: ${rideRequest.userId}`);
         await handleDriverAcceptance(driverId, rideRequest.userId);
       } else {
         await bot.sendMessage(driverId, 'عذرًا، لا يمكنك قبول هذا الطلب حاليًا. تأكد من أنك مسجل كسائق.');

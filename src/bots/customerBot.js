@@ -173,10 +173,12 @@ async function showUserInfo(chatId) {
 
 async function handleDriverAcceptance(driverId, userId) {
   try {
+    console.log(`handleDriverAcceptance: Fetching driver with telegramId: ${driverId} and user with telegramId: ${userId}`);
     const driver = await Driver.findOne({ telegramId: driverId });
     const user = await User.findOne({ telegramId: userId });
 
     if (driver && user) {
+      console.log(`handleDriverAcceptance: Sending driver info to user ${userId}`);
       await bot.sendMessage(userId, `تم قبول طلبك! معلومات السائق:\nالاسم: ${driver.name}\nنوع السيارة: ${driver.carType}\nرقم الهاتف: ${driver.phoneNumber}`, mainMenu);
       
       removeRideRequest(userId);
@@ -186,6 +188,7 @@ async function handleDriverAcceptance(driverId, userId) {
     console.error('Error in handleDriverAcceptance:', error);
   }
 }
+
 
 
 module.exports = { bot, handleDriverAcceptance };
