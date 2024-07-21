@@ -1,3 +1,4 @@
+// User.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -11,6 +12,10 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   phoneNumber: {
+    type: String,
+    required: true
+  },
+  address: {  // إضافة حقل العنوان
     type: String,
     required: true
   },

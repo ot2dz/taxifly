@@ -137,6 +137,9 @@ async function handleAddressInput(chatId, address) {
       return;
     }
 
+    user.address = address;  // تحديث عنوان المستخدم
+    await user.save();
+
     userStates.set(chatId, CHAT_STATES.WAITING_FOR_TAXI);
     await bot.sendMessage(chatId, 'تم استلام طلبك. جاري البحث عن سائق...');
 

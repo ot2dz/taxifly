@@ -3,6 +3,8 @@ const config = require('../config');
 const Driver = require('../models/Driver');
 const { addRideRequest, getRideRequest, removeRideRequest } = require('./sharedRideFunctions');
 const { handleDriverAcceptance } = require('./customerBot');
+const Ride = require('../models/Ride');
+
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
 
@@ -236,8 +238,17 @@ bot.on('callback_query', async (callbackQuery) => {
       const driver = await Driver.findOne({ telegramId: driverId });
       if (driver) {
         rideRequest.status = 'accepted';
+  
+        const newRide = new Ride({
+          userId: rideRequest.userId,
+          driverId: driver._id,
+          status: 'accepted'
+        });
+  
+        await newRide.save(); // تسجيل الرحلة المقبولة في قاعدة البيانات
+  
         await bot.sendMessage(driverId, 'لقد قبلت الطلب. سيتم إرسال معلوماتك للزبون.');
-        
+  
         await handleDriverAcceptance(driverId, rideRequest.userId);
       } else {
         await bot.sendMessage(driverId, 'عذرًا، لا يمكنك قبول هذا الطلب حاليًا. تأكد من أنك مسجل كسائق.');
