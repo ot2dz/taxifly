@@ -1,23 +1,18 @@
-// sharedRideFunctions.js
 const mongoose = require('mongoose');
 
 const rideRequests = new Map();
 
-function removeRideRequest(userId) {
+function removeRideRequest(telegramId) {
   for (const [key, value] of rideRequests.entries()) {
-    if (value.userId.equals(userId)) {
+    if (value.userId === telegramId) {
       rideRequests.delete(key);
       break;
     }
   }
 }
 
-function addRideRequest(rideId, userId) {
-  // التحقق من أن userId هو معرف MongoDB صالح قبل استخدامه
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new Error("Invalid userId");
-  }
-  rideRequests.set(rideId, { userId: new mongoose.Types.ObjectId(userId), status: 'pending' });
+function addRideRequest(rideId, telegramId) {
+  rideRequests.set(rideId, { userId: telegramId, status: 'pending' });
 }
 
 function getRideRequest(rideId) {

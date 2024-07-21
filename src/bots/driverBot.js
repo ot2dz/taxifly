@@ -241,7 +241,7 @@ bot.on('callback_query', async (callbackQuery) => {
         rideRequest.status = 'accepted';
   
         const newRide = new Ride({
-          userId: new mongoose.Types.ObjectId(rideRequest.userId),
+          userId: rideRequest.userId, // استخدم telegramId هنا
           driverId: driver._id,
           status: 'accepted'
         });
@@ -260,6 +260,7 @@ bot.on('callback_query', async (callbackQuery) => {
     }
   }
   
+  
 
   async function notifyDrivers(user, address) {
     console.log('Starting notifyDrivers function');
@@ -273,7 +274,7 @@ bot.on('callback_query', async (callbackQuery) => {
     }
   
     const rideId = Date.now().toString();
-    addRideRequest(rideId, user._id); // تمرير معرف المستخدم الصحيح
+    addRideRequest(rideId, user.telegramId); // تمرير telegramId للمستخدم
   
     for (const driver of drivers) {
       const message = `زبون جديد يحتاج إلى طاكسي!\nالاسم: ${user.name}\nالعنوان: ${address}`;
@@ -295,21 +296,6 @@ bot.on('callback_query', async (callbackQuery) => {
     console.log('Finished notifyDrivers function');
   }
   
-/*
-  async function cancelRideForOtherDrivers(acceptedDriverId, rideId) {
-    const drivers = await Driver.find({ telegramId: { $ne: acceptedDriverId } });
-    for (const driver of drivers) {
-      try {
-        await bot.sendMessage(driver.telegramId, 'عذرًا، تم قبول الطلب من قبل سائق آخر.');
-      } catch (error) {
-        console.error(`Failed to send cancellation to driver ${driver.telegramId}:`, error);
-      }
-    }
-    // إزالة الطلب من القائمة بعد الانتهاء
-    rideRequests.delete(rideId);
-  }
-*/
-
   
   // في نهاية الملف
   module.exports = { 
