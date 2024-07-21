@@ -2,12 +2,32 @@ const mongoose = require('mongoose');
 
 const rideSchema = new mongoose.Schema({
   userId: {
-    type: String, // تغيير النوع إلى String
+    type: String, // `telegramId` الخاص بالمستخدم
+    required: true
+  },
+  userName: {
+    type: String,
+    required: true
+  },
+  userPhone: {
+    type: String,
+    required: true
+  },
+  userAddress: {
+    type: String,
     required: true
   },
   driverId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'Driver',
+    required: true
+  },
+  driverName: {
+    type: String,
+    required: true
+  },
+  driverPhone: {
+    type: String,
     required: true
   },
   status: {

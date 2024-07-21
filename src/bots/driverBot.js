@@ -237,12 +237,18 @@ bot.on('callback_query', async (callbackQuery) => {
       }
   
       const driver = await Driver.findOne({ telegramId: driverId });
-      if (driver) {
+      const user = await User.findOne({ telegramId: rideRequest.userId });
+      if (driver && user) {
         rideRequest.status = 'accepted';
   
         const newRide = new Ride({
-          userId: rideRequest.userId, // استخدم telegramId هنا
+          userId: rideRequest.userId, // `telegramId` الخاص بالمستخدم
+          userName: user.name,
+          userPhone: user.phoneNumber,
+          userAddress: user.address,
           driverId: driver._id,
+          driverName: driver.name,
+          driverPhone: driver.phoneNumber,
           status: 'accepted'
         });
   
@@ -259,6 +265,7 @@ bot.on('callback_query', async (callbackQuery) => {
       await bot.sendMessage(driverId, 'حدث خطأ أثناء قبول الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
     }
   }
+  
   
   
   
@@ -296,6 +303,7 @@ bot.on('callback_query', async (callbackQuery) => {
     }
     console.log('Finished notifyDrivers function');
   }
+  
   
   
   // في نهاية الملف
