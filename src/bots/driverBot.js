@@ -4,6 +4,7 @@ const Driver = require('../models/Driver');
 const { addRideRequest, getRideRequest, removeRideRequest } = require('./sharedRideFunctions');
 const { handleDriverAcceptance } = require('./customerBot');
 const Ride = require('../models/Ride');
+const mongoose = require('mongoose');
 
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
