@@ -13,6 +13,10 @@ function removeRideRequest(userId) {
 }
 
 function addRideRequest(rideId, userId) {
+  // التحقق من أن userId هو معرف MongoDB صالح قبل استخدامه
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid userId");
+  }
   rideRequests.set(rideId, { userId: new mongoose.Types.ObjectId(userId), status: 'pending' });
 }
 

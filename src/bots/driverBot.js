@@ -270,10 +270,10 @@ bot.on('callback_query', async (callbackQuery) => {
       // يمكنك هنا إضافة منطق لإخبار الزبون أنه لا يوجد سائقين متاحين حاليًا
       return;
     }
-
+  
     const rideId = Date.now().toString();
-    addRideRequest(rideId, user.telegramId);
-
+    addRideRequest(rideId, user._id); // تمرير معرف المستخدم الصحيح
+  
     for (const driver of drivers) {
       const message = `زبون جديد يحتاج إلى طاكسي!\nالاسم: ${user.name}\nالعنوان: ${address}`;
       const options = {
@@ -293,6 +293,7 @@ bot.on('callback_query', async (callbackQuery) => {
     }
     console.log('Finished notifyDrivers function');
   }
+  
 /*
   async function cancelRideForOtherDrivers(acceptedDriverId, rideId) {
     const drivers = await Driver.find({ telegramId: { $ne: acceptedDriverId } });
