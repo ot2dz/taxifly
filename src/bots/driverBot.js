@@ -240,7 +240,7 @@ bot.on('callback_query', async (callbackQuery) => {
         rideRequest.status = 'accepted';
   
         const newRide = new Ride({
-          userId: rideRequest.userId,
+          userId: mongoose.Types.ObjectId(rideRequest.userId),
           driverId: driver._id,
           status: 'accepted'
         });
@@ -258,6 +258,7 @@ bot.on('callback_query', async (callbackQuery) => {
       await bot.sendMessage(driverId, 'حدث خطأ أثناء قبول الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
     }
   }
+  
 
   async function notifyDrivers(user, address) {
     console.log('Starting notifyDrivers function');

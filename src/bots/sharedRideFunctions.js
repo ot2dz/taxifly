@@ -1,4 +1,6 @@
 // sharedRideFunctions.js
+const mongoose = require('mongoose');
+
 const rideRequests = new Map();
 
 function removeRideRequest(userId) {
@@ -11,7 +13,7 @@ function removeRideRequest(userId) {
 }
 
 function addRideRequest(rideId, userId) {
-  rideRequests.set(rideId, { userId, status: 'pending' });
+  rideRequests.set(rideId, { userId: mongoose.Types.ObjectId(userId), status: 'pending' });
 }
 
 function getRideRequest(rideId) {
