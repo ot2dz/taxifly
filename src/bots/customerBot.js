@@ -191,6 +191,4 @@ async function handleDriverAcceptance(driverId, userId) {
 
 
 
-
-
 module.exports = { bot, handleDriverAcceptance };

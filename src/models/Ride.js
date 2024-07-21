@@ -1,10 +1,8 @@
-// Ride.js
 const mongoose = require('mongoose');
 
 const rideSchema = new mongoose.Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String, // تغيير النوع إلى String
     required: true
   },
   driverId: {
