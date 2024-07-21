@@ -241,7 +241,7 @@ bot.on('callback_query', async (callbackQuery) => {
         rideRequest.status = 'accepted';
   
         const newRide = new Ride({
-          userId: new mongoose.Types.ObjectId(rideRequest.userId),
+          userId: rideRequest.userId, // إذا كان هذا هو telegramId
           driverId: driver._id,
           status: 'accepted'
         });
