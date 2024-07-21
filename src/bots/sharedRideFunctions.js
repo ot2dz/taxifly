@@ -13,7 +13,7 @@ function removeRideRequest(userId) {
 }
 
 function addRideRequest(rideId, userId) {
-  rideRequests.set(rideId, { userId: mongoose.Types.ObjectId(userId), status: 'pending' });
+  rideRequests.set(rideId, { userId: new mongoose.Types.ObjectId(userId), status: 'pending' });
 }
 
 function getRideRequest(rideId) {
