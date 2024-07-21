@@ -241,7 +241,7 @@ bot.on('callback_query', async (callbackQuery) => {
         rideRequest.status = 'accepted';
   
         const newRide = new Ride({
-          userId: mongoose.Types.ObjectId(rideRequest.userId),
+          userId: new mongoose.Types.ObjectId(rideRequest.userId),
           driverId: driver._id,
           status: 'accepted'
         });
