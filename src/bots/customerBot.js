@@ -10,7 +10,6 @@ const userStates = new Map();
 
 const CHAT_STATES = {
   IDLE: 'IDLE',
-  AWAITING_NAME: 'AWAITING_NAME',
   AWAITING_PHONE: 'AWAITING_PHONE',
   AWAITING_ADDRESS: 'AWAITING_ADDRESS',
   WAITING_FOR_TAXI: 'WAITING_FOR_TAXI'
@@ -36,14 +35,15 @@ bot.onText(/\/start/, async (msg) => {
       userStates.set(chatId, CHAT_STATES.IDLE);
       await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
     } else {
-      userStates.set(chatId, CHAT_STATES.AWAITING_NAME);
-      await bot.sendMessage(chatId, 'مرحبًا بك في خدمة طلب الطاكسي! الرجاء إدخال اسمك:');
+      userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
+      await bot.sendMessage(chatId, 'مرحبًا بك في خدمة طلب الطاكسي! الرجاء إدخال رقم هاتفك:');
     }
   } catch (error) {
     console.error('Error in /start command:', error);
     await bot.sendMessage(chatId, 'عذرًا، حدث خطأ. الرجاء المحاولة مرة أخرى لاحقًا.');
   }
 });
+
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
@@ -54,9 +54,6 @@ bot.on('message', async (msg) => {
   const currentState = userStates.get(chatId) || CHAT_STATES.IDLE;
 
   switch (currentState) {
-    case CHAT_STATES.AWAITING_NAME:
-      await handleNameInput(chatId, messageText);
-      break;
     case CHAT_STATES.AWAITING_PHONE:
       await handlePhoneInput(chatId, messageText);
       break;
@@ -72,37 +69,30 @@ bot.on('message', async (msg) => {
   }
 });
 
-async function handleNameInput(chatId, name) {
-  userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
-  userStates.set(chatId + '_name', name);
-  await bot.sendMessage(chatId, `شكرًا ${name}، الرجاء إدخال رقم هاتفك الآن:`);
-}
+
 
 async function handlePhoneInput(chatId, phone) {
   try {
-    const name = userStates.get(chatId + '_name');
     const user = await User.findOne({ telegramId: chatId });
 
     if (user) {
       // تحديث بيانات المستخدم الحالي
-      user.name = name;
       user.phoneNumber = phone;
       await user.save();
     } else {
       // إنشاء مستخدم جديد
-      await User.create({ telegramId: chatId, name: name, phoneNumber: phone });
+      await User.create({ telegramId: chatId, phoneNumber: phone });
     }
 
     userStates.set(chatId, CHAT_STATES.IDLE);
-    userStates.delete(chatId + '_name');
     await bot.sendMessage(chatId, 'تم تسجيل معلوماتك بنجاح!', mainMenu);
   } catch (error) {
     console.error('Error saving user info:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء حفظ المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.');
     userStates.set(chatId, CHAT_STATES.IDLE);
-    userStates.delete(chatId + '_name');
   }
 }
+
 
 async function handleMainMenuInput(chatId, messageText) {
   switch (messageText) {
@@ -114,8 +104,8 @@ async function handleMainMenuInput(chatId, messageText) {
       await showUserInfo(chatId);
       break;
     case '✏️ تعديل معلوماتي':
-      userStates.set(chatId, CHAT_STATES.AWAITING_NAME);
-      await bot.sendMessage(chatId, 'الرجاء إدخال اسمك الجديد:');
+      userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
+      await bot.sendMessage(chatId, 'الرجاء إدخال رقم هاتفك الجديد:');
       break;
     default:
       await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
@@ -164,16 +154,17 @@ async function showUserInfo(chatId) {
   try {
     const user = await User.findOne({ telegramId: chatId });
     if (user) {
-      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${user.name}\nرقم الهاتف: ${user.phoneNumber}\nالعنوان: ${user.address || 'غير محدد'}`, mainMenu);
+      await bot.sendMessage(chatId, `معلوماتك:\nرقم الهاتف: ${user.phoneNumber}\nالعنوان: ${user.address || 'غير محدد'}`, mainMenu);
     } else {
-      userStates.set(chatId, CHAT_STATES.AWAITING_NAME);
-      await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً. أدخل اسمك:');
+      userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
+      await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً. أدخل رقم هاتفك:');
     }
   } catch (error) {
     console.error('Error fetching user info:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء استرجاع المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.', mainMenu);
   }
 }
+
 
 async function handleDriverAcceptance(driverId, userId) {
   try {
