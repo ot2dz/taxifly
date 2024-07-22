@@ -64,7 +64,7 @@ bot.on('message', async (msg) => {
       await handleAddressInput(chatId, messageText);
       break;
     case CHAT_STATES.IDLE:
-      if (messageText === '1') {
+      if (messageText === '1' || messageText === '🚖 اريد طاكسي') {
         userStates.set(chatId, CHAT_STATES.AWAITING_ADDRESS);
         await bot.sendMessage(chatId, 'الرجاء إدخال عنوانك الحالي:');
       } else {
