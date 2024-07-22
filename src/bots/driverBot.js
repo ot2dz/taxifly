@@ -242,7 +242,6 @@ async function handleAcceptRide(driverId, rideId) {
 
       const newRide = new Ride({
         userId: rideRequest.userId, // `telegramId` الخاص بالمستخدم
-        userName: user.name,
         userPhone: user.phoneNumber,
         userAddress: user.address,
         driverId: driver._id,

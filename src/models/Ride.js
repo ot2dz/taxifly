@@ -6,8 +6,7 @@ const rideSchema = new mongoose.Schema({
     required: true
   },
   userName: {
-    type: String,
-    required: true
+    type: String
   },
   userPhone: {
     type: String,

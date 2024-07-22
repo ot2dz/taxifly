@@ -154,7 +154,7 @@ async function showUserInfo(chatId) {
   try {
     const user = await User.findOne({ telegramId: chatId });
     if (user) {
-      await bot.sendMessage(chatId, `معلوماتك:\nرقم الهاتف: ${user.phoneNumber}\nالعنوان: ${user.address || 'غير محدد'}`, mainMenu);
+      await bot.sendMessage(chatId, `معلوماتك:\nرقم الهاتف: ${user.phoneNumber}}`, mainMenu);
     } else {
       userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
       await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً. أدخل رقم هاتفك:');
