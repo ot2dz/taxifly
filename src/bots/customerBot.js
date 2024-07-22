@@ -34,7 +34,7 @@ bot.onText(/\/start/, async (msg) => {
 
     if (user) {
       userStates.set(chatId, CHAT_STATES.IDLE);
-      await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! كيف يمكنني مساعدتك اليوم؟', mainMenu);
+      await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
     } else {
       userStates.set(chatId, CHAT_STATES.AWAITING_NAME);
       await bot.sendMessage(chatId, 'مرحبًا بك في خدمة طلب الطاكسي! الرجاء إدخال اسمك:');
@@ -64,10 +64,19 @@ bot.on('message', async (msg) => {
       await handleAddressInput(chatId, messageText);
       break;
     case CHAT_STATES.IDLE:
-      await handleMainMenuInput(chatId, messageText);
+      if (messageText === '1') {
+        userStates.set(chatId, CHAT_STATES.AWAITING_ADDRESS);
+        await bot.sendMessage(chatId, 'الرجاء إدخال عنوانك الحالي:');
+      } else {
+        await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
+      }
+      break;
+    default:
+      await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
       break;
   }
 });
+
 
 async function handleNameInput(chatId, name) {
   userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
