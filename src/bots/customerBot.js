@@ -187,9 +187,9 @@ async function handleDriverAcceptance(driverId, userId) {
     const user = await User.findOne({ telegramId: userId });
 
     if (driver && user) {
-      console.log(`handleDriverAcceptance: Sending driver info to user ${userId}`);
-      await bot.sendMessage(userId, `تم قبول طلبك! معلومات السائق:\nالاسم: ${driver.name}\nنوع السيارة: ${driver.carType}\nرقم الهاتف: ${driver.phoneNumber}`, mainMenu);
-      
+      console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
+      await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber} , اتصل به الان `);
+
       removeRideRequest(userId);
       userStates.set(userId, CHAT_STATES.IDLE);
     }
@@ -197,6 +197,7 @@ async function handleDriverAcceptance(driverId, userId) {
     console.error('Error in handleDriverAcceptance:', error);
   }
 }
+
 
 
 
