@@ -179,7 +179,7 @@ async function showDriverInfo(chatId) {
     const driver = await Driver.findOne({ telegramId: chatId });
     if (driver) {
       const status = driver.isAvailable ? 'متاح' : 'غير متاح';
-      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}\nالحالة: ${status}`, mainMenu);
+      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}`, mainMenu);
     } else {
       await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً باستخدام زر "تسجيل كسائق".', mainMenu);
     }

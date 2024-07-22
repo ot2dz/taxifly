@@ -64,19 +64,13 @@ bot.on('message', async (msg) => {
       await handleAddressInput(chatId, messageText);
       break;
     case CHAT_STATES.IDLE:
-      if (messageText === '1' || messageText === '🚖 اريد طاكسي') {
-        userStates.set(chatId, CHAT_STATES.AWAITING_ADDRESS);
-        await bot.sendMessage(chatId, 'الرجاء إدخال عنوانك الحالي:');
-      } else {
-        await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
-      }
+      await handleMainMenuInput(chatId, messageText);
       break;
     default:
       await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
       break;
   }
 });
-
 
 async function handleNameInput(chatId, name) {
   userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
@@ -113,6 +107,7 @@ async function handlePhoneInput(chatId, phone) {
 async function handleMainMenuInput(chatId, messageText) {
   switch (messageText) {
     case '🚖 اريد طاكسي':
+    case '1':
       await requestTaxi(chatId);
       break;
     case 'ℹ️ معلوماتي':
@@ -123,7 +118,8 @@ async function handleMainMenuInput(chatId, messageText) {
       await bot.sendMessage(chatId, 'الرجاء إدخال اسمك الجديد:');
       break;
     default:
-      await bot.sendMessage(chatId, 'عذرًا، لم أفهم طلبك. الرجاء اختيار أحد الخيارات المتاحة.', mainMenu);
+      await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);
+      break;
   }
 }
 
@@ -164,12 +160,11 @@ async function handleAddressInput(chatId, address) {
   }
 }
 
-
 async function showUserInfo(chatId) {
   try {
     const user = await User.findOne({ telegramId: chatId });
     if (user) {
-      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${user.name}\nرقم الهاتف: ${user.phoneNumber}`, mainMenu);
+      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${user.name}\nرقم الهاتف: ${user.phoneNumber}\nالعنوان: ${user.address || 'غير محدد'}`, mainMenu);
     } else {
       userStates.set(chatId, CHAT_STATES.AWAITING_NAME);
       await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً. أدخل اسمك:');
@@ -183,10 +178,9 @@ async function showUserInfo(chatId) {
 async function handleDriverAcceptance(driverId, userId) {
   try {
     console.log(`handleDriverAcceptance: Fetching driver with telegramId: ${driverId} and user with telegramId: ${userId}`);
-    const driver = await Driver.findOne({ telegramId: driverId });
     const user = await User.findOne({ telegramId: userId });
 
-    if (driver && user) {
+    if (user) {
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
       await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber} , اتصل به الان `);
 
@@ -197,8 +191,5 @@ async function handleDriverAcceptance(driverId, userId) {
     console.error('Error in handleDriverAcceptance:', error);
   }
 }
-
-
-
 
 module.exports = { bot, handleDriverAcceptance };
