@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
   },
   address: {  // إضافة حقل العنوان
     type: String,
-    required: true
+    required: false
   },
   createdAt: {
     type: Date,
