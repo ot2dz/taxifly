@@ -271,7 +271,7 @@ async function handleDriverAcceptance(driverId, userId) {
 
     if (user) {
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-      await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber}`);
+      await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber}, اتصل به الان`);
 
       removeRideRequest(userId);
       driverStates.set(userId, CHAT_STATES.IDLE);
@@ -296,8 +296,8 @@ async function notifyDrivers(user, address) {
   addRideRequest(rideId, user.telegramId); // تمرير telegramId للمستخدم
 
   for (const driver of drivers) {
-    const message = `زبون جديد يحتاج إلى طاكسي!\nالاسم: ${user.name}\nالعنوان: ${address}`;
-    const options = {
+    const message = `زبون جديد يحتاج إلى طاكسي!\nعنوان الزبون: ${address}\n اضغط على الزر في الاسفل لقبول الطلب`;
+     const options = {
       reply_markup: {
         inline_keyboard: [[
           { text: 'قبول الطلب', callback_data: `accept_ride_${rideId}` }
