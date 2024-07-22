@@ -2,12 +2,9 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const Driver = require('../models/Driver');
 const { addRideRequest, getRideRequest, removeRideRequest } = require('./sharedRideFunctions');
-const { handleDriverAcceptance } = require('./customerBot');
+const User = require('../models/User');
 const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
-const User = require('../models/User'); // استيراد نموذج User
-
-
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
 
@@ -225,92 +222,102 @@ bot.on('callback_query', async (callbackQuery) => {
     }
   });
 
-  async function handleAcceptRide(driverId, rideId) {
-    try {
-      const rideRequest = getRideRequest(rideId);
-      if (!rideRequest) {
-        await bot.sendMessage(driverId, 'عذرًا، هذا الطلب لم يعد متاحًا.');
-        return;
-      }
-  
-      if (rideRequest.status === 'accepted') {
-        await bot.sendMessage(driverId, 'عذرًا، هذا الطلب لم يعد متاحًا.');
-        return;
-      }
-  
-      const driver = await Driver.findOne({ telegramId: driverId });
-      const user = await User.findOne({ telegramId: rideRequest.userId });
-      if (driver && user) {
-        rideRequest.status = 'accepted';
-  
-        const newRide = new Ride({
-          userId: rideRequest.userId, // `telegramId` الخاص بالمستخدم
-          userName: user.name,
-          userPhone: user.phoneNumber,
-          userAddress: user.address,
-          driverId: driver._id,
-          driverName: driver.name,
-          driverPhone: driver.phoneNumber,
-          status: 'accepted'
-        });
-  
-        await newRide.save(); // تسجيل الرحلة المقبولة في قاعدة البيانات
-  
-        await bot.sendMessage(driverId, 'لقد قبلت الطلب. سيتم إرسال معلوماتك للزبون.');
-        console.log(`handleDriverAcceptance called with driverId: ${driverId} and userId: ${rideRequest.userId}`);
-        await handleDriverAcceptance(driverId, rideRequest.userId);
-      } else {
-        await bot.sendMessage(driverId, 'عذرًا، لا يمكنك قبول هذا الطلب حاليًا. تأكد من أنك مسجل كسائق.');
-      }
-    } catch (error) {
-      console.error('Error in handleAcceptRide:', error);
-      await bot.sendMessage(driverId, 'حدث خطأ أثناء قبول الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
-    }
-  }
-  
-  
-  
-  
-
-  async function notifyDrivers(user, address) {
-    console.log('Starting notifyDrivers function');
-    const drivers = await Driver.find({});
-    console.log(`Found ${drivers.length} drivers`);
-  
-    if (drivers.length === 0) {
-      console.log('No drivers found');
-      // يمكنك هنا إضافة منطق لإخبار الزبون أنه لا يوجد سائقين متاحين حاليًا
+async function handleAcceptRide(driverId, rideId) {
+  try {
+    const rideRequest = getRideRequest(rideId);
+    if (!rideRequest) {
+      await bot.sendMessage(driverId, 'عذرًا، هذا الطلب لم يعد متاحًا.');
       return;
     }
-  
-    const rideId = Date.now().toString();
-    addRideRequest(rideId, user.telegramId); // تمرير telegramId للمستخدم
-  
-    for (const driver of drivers) {
-      const message = `زبون جديد يحتاج إلى طاكسي!\nالاسم: ${user.name}\nالعنوان: ${address}`;
-      const options = {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: 'قبول الطلب', callback_data: `accept_ride_${rideId}` }
-          ]]
-        }
-      };
-      try {
-        console.log(`Sending notification to driver ${driver.telegramId}`);
-        await bot.sendMessage(driver.telegramId, message, options);
-        console.log(`Notification sent successfully to driver ${driver.telegramId}`);
-      } catch (error) {
-        console.error(`Failed to send notification to driver ${driver.telegramId}:`, error);
-      }
+
+    if (rideRequest.status === 'accepted') {
+      await bot.sendMessage(driverId, 'عذرًا، هذا الطلب لم يعد متاحًا.');
+      return;
     }
-    console.log('Finished notifyDrivers function');
+
+    const driver = await Driver.findOne({ telegramId: driverId });
+    const user = await User.findOne({ telegramId: rideRequest.userId });
+    if (driver && user) {
+      rideRequest.status = 'accepted';
+
+      const newRide = new Ride({
+        userId: rideRequest.userId, // `telegramId` الخاص بالمستخدم
+        userName: user.name,
+        userPhone: user.phoneNumber,
+        userAddress: user.address,
+        driverId: driver._id,
+        driverName: driver.name,
+        driverPhone: driver.phoneNumber,
+        status: 'accepted'
+      });
+
+      await newRide.save(); // تسجيل الرحلة المقبولة في قاعدة البيانات
+
+      console.log(`handleDriverAcceptance called with driverId: ${driverId} and userId: ${rideRequest.userId}`);
+      await handleDriverAcceptance(driverId, rideRequest.userId);
+    } else {
+      await bot.sendMessage(driverId, 'عذرًا، لا يمكنك قبول هذا الطلب حاليًا. تأكد من أنك مسجل كسائق.');
+    }
+  } catch (error) {
+    console.error('Error in handleAcceptRide:', error);
+    await bot.sendMessage(driverId, 'حدث خطأ أثناء قبول الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
   }
-  
-  
-  
-  // في نهاية الملف
-  module.exports = { 
-    bot, 
-    notifyDrivers, 
-    rideRequests // تصدير rideRequests
-  };
+}
+
+async function handleDriverAcceptance(driverId, userId) {
+  try {
+    console.log(`handleDriverAcceptance: Fetching driver with telegramId: ${driverId} and user with telegramId: ${userId}`);
+    const user = await User.findOne({ telegramId: userId });
+
+    if (user) {
+      console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
+      await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber}`);
+
+      removeRideRequest(userId);
+      driverStates.set(userId, CHAT_STATES.IDLE);
+    }
+  } catch (error) {
+    console.error('Error in handleDriverAcceptance:', error);
+  }
+}
+
+async function notifyDrivers(user, address) {
+  console.log('Starting notifyDrivers function');
+  const drivers = await Driver.find({});
+  console.log(`Found ${drivers.length} drivers`);
+
+  if (drivers.length === 0) {
+    console.log('No drivers found');
+    // يمكنك هنا إضافة منطق لإخبار الزبون أنه لا يوجد سائقين متاحين حاليًا
+    return;
+  }
+
+  const rideId = Date.now().toString();
+  addRideRequest(rideId, user.telegramId); // تمرير telegramId للمستخدم
+
+  for (const driver of drivers) {
+    const message = `زبون جديد يحتاج إلى طاكسي!\nالاسم: ${user.name}\nالعنوان: ${address}`;
+    const options = {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'قبول الطلب', callback_data: `accept_ride_${rideId}` }
+        ]]
+      }
+    };
+    try {
+      console.log(`Sending notification to driver ${driver.telegramId}`);
+      await bot.sendMessage(driver.telegramId, message, options);
+      console.log(`Notification sent successfully to driver ${driver.telegramId}`);
+    } catch (error) {
+      console.error(`Failed to send notification to driver ${driver.telegramId}:`, error);
+    }
+  }
+  console.log('Finished notifyDrivers function');
+}
+
+// في نهاية الملف
+module.exports = { 
+  bot, 
+  notifyDrivers, 
+  rideRequests // تصدير rideRequests
+};
