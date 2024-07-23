@@ -272,7 +272,8 @@ async function handleDriverAcceptance(driverId, userId) {
 
     if (user) {
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: <a href="tel:${userPhoneNumber}">${userPhoneNumber}</a>`, { parse_mode: 'HTML' });
+      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: <a href="tel:${user.phoneNumber}">${userPhoneNumber}</a>`, { parse_mode: 'HTML' });
+
 
         // إشعار الزبون بقبول الطلب
         await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان .');
