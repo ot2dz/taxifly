@@ -272,6 +272,10 @@ async function handleDriverAcceptance(driverId, userId) {
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
       await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber}, اتصل به الان`);
 
+        // إشعار الزبون بقبول الطلب
+        await bot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان .');
+
+
       removeRideRequest(userId);
       driverStates.set(userId, CHAT_STATES.IDLE);
     }
