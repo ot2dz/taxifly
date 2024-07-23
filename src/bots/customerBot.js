@@ -85,7 +85,7 @@ async function handlePhoneInput(chatId, phone) {
     }
 
     userStates.set(chatId, CHAT_STATES.IDLE);
-    await bot.sendMessage(chatId, 'تم تسجيل معلوماتك بنجاح!', mainMenu);
+    await bot.sendMessage(chatId, 'تم تسجيل معلوماتك بنجاح لطلب طاكسي ارسل رقم 1 هنا!', mainMenu);
   } catch (error) {
     console.error('Error saving user info:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء حفظ المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.');
