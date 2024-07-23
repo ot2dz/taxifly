@@ -5,6 +5,8 @@ const { addRideRequest, getRideRequest, removeRideRequest } = require('./sharedR
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
+const { bot: customerBot } = require('./customerBot');
+
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
 
@@ -273,7 +275,7 @@ async function handleDriverAcceptance(driverId, userId) {
       await bot.sendMessage(driverId, `تم قبول طلبك! رقم هاتف الزبون: ${user.phoneNumber}, اتصل به الان`);
 
         // إشعار الزبون بقبول الطلب
-        await bot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان .');
+        await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان .');
 
 
       removeRideRequest(userId);
