@@ -72,6 +72,14 @@ bot.on('message', async (msg) => {
 
 
 async function handlePhoneInput(chatId, phone) {
+  // التحقق من أن الرقم يحتوي فقط على أرقام، يتكون من 10 أرقام، ويبدأ بـ 06 أو 07 أو 05
+  const phoneRegex = /^(06|07|05)\d{8}$/;
+
+  if (!phoneRegex.test(phone)) {
+    await bot.sendMessage(chatId, 'عذرًا، يجب أن يكون رقم الهاتف مكونًا من 10 أرقام ويبدأ بـ 06، 07، أو 05. الرجاء إدخال رقم هاتف صحيح.');
+    return;
+  }
+
   try {
     const user = await User.findOne({ telegramId: chatId });
 
@@ -92,6 +100,7 @@ async function handlePhoneInput(chatId, phone) {
     userStates.set(chatId, CHAT_STATES.IDLE);
   }
 }
+
 
 
 async function handleMainMenuInput(chatId, messageText) {
