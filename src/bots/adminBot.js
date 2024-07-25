@@ -168,10 +168,10 @@ bot.onText(/\/getAllRides/, async (msg) => {
     if (rides.length > 0) {
       let response = 'قائمة الرحلات:\n';
       response += '```\n';
-      response += ' الزبون        | السائق       |      العنوان      \n';
+      response += 'الزبون        | السائق       | العنوان      \n';
       response += '--------------|--------------|--------------\n';
       rides.forEach(ride => {
-        response += `${ride.userAddress.padEnd(12)} | ${ride.driverName.padEnd(12)} | ${ride.status.padEnd(12)}\n`;
+        response += `${ride.userName.padEnd(12)} | ${ride.driverName.padEnd(12)} | ${ride.userAddress.padEnd(12)}\n`;
       });
       response += '```';
       bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
