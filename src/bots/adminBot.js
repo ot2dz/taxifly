@@ -2,6 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const Driver = require('../models/Driver');
 const User = require('../models/User');
+const Ride = require('../models/Ride'); // استيراد نموذج الرحلات
 const customerBot = require('./customerBot').bot; // استيراد بوت الزبون
 const driverBot = require('./driverBot').bot; // استيراد بوت السائق
 
@@ -9,7 +10,15 @@ const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'مرحبًا بك في بوت الإدارة! استخدم الأوامر التالية لإرسال الرسائل:\n/sendToAllDrivers [message]\n/sendToDriver [driverId] [message]\n/sendToAllCustomers [message]\n/sendToCustomer [customerId] [message]');
+  bot.sendMessage(chatId, 'مرحبًا بك في بوت الإدارة! استخدم الأوامر التالية:\n' +
+    '/sendToAllDrivers [message]\n' +
+    '/sendToDriver [driverId] [message]\n' +
+    '/sendToAllCustomers [message]\n' +
+    '/sendToCustomer [customerId] [message]\n' +
+    '/getAllDrivers\n' +
+    '/getAllCustomers\n' +
+    '/getAllRides'
+  );
 });
 
 bot.onText(/\/sendToAllDrivers (.+)/, async (msg, match) => {
@@ -97,6 +106,69 @@ bot.onText(/\/sendToCustomer (\d+) (.+)/, async (msg, match) => {
   } catch (error) {
     console.error('Error finding customer:', error);
     bot.sendMessage(chatId, 'حدث خطأ أثناء البحث عن الزبون.');
+  }
+});
+
+// دالة لجلب جميع السائقين
+bot.onText(/\/getAllDrivers/, async (msg) => {
+  const chatId = msg.chat.id;
+  
+  try {
+    const drivers = await Driver.find({});
+    if (drivers.length > 0) {
+      let response = 'قائمة السائقين:\n';
+      drivers.forEach(driver => {
+        response += `- ${driver.name} (ID: ${driver.telegramId}, هاتف: ${driver.phoneNumber}, سيارة: ${driver.carType})\n`;
+      });
+      bot.sendMessage(chatId, response);
+    } else {
+      bot.sendMessage(chatId, 'لا يوجد سائقين مسجلين.');
+    }
+  } catch (error) {
+    console.error('Error fetching drivers:', error);
+    bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة السائقين.');
+  }
+});
+
+// دالة لجلب جميع الزبائن
+bot.onText(/\/getAllCustomers/, async (msg) => {
+  const chatId = msg.chat.id;
+  
+  try {
+    const users = await User.find({});
+    if (users.length > 0) {
+      let response = 'قائمة الزبائن:\n';
+      users.forEach(user => {
+        response += `- ${user.phoneNumber} (ID: ${user.telegramId}, عنوان: ${user.address || 'غير محدد'})\n`;
+      });
+      bot.sendMessage(chatId, response);
+    } else {
+      bot.sendMessage(chatId, 'لا يوجد زبائن مسجلين.');
+    }
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الزبائن.');
+  }
+});
+
+// دالة لجلب جميع الرحلات
+bot.onText(/\/getAllRides/, async (msg) => {
+  const chatId = msg.chat.id;
+  
+  try {
+    const rides = await Ride.find({});
+    if (rides.length > 0) {
+      let response = 'قائمة الرحلات:\n';
+      rides.forEach(ride => {
+        response += `- رحلة (ID: ${ride._id}):\n  زبون: ${ride.userName} (ID: ${ride.userId}, هاتف: ${ride.userPhone})\n  سائق: ${ride.driverName} (ID: ${ride.driverId}, هاتف: ${ride.driverPhone})\n  حالة: ${ride.status}\n`;
+      });
+      bot.sendMessage(chatId, response);
+    } else {
+      bot.sendMessage(chatId, 'لا يوجد رحلات مسجلة.');
+    }
+  } catch (error) {
+    console.error('Error fetching rides:', error);
+    bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الرحلات.');
   }
 });
 
