@@ -274,7 +274,7 @@ async function handleDriverAcceptance(driverId, userId) {
       const userPhoneNumber = user.phoneNumber;
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
       // إرسال الرسالة الأولى للسائق
-      await bot.sendMessage(driverId, 'تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي:');
+      await bot.sendMessage(driverId, 'تم قبول طلبك! الزبون في انتظارك قم بالاتصال به الان :');
 
       // إرسال رقم الهاتف للسائق
       await bot.sendMessage(driverId, `${userPhoneNumber}`);
