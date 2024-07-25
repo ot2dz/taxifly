@@ -171,7 +171,7 @@ bot.onText(/\/getAllRides/, async (msg) => {
       response += 'ID            | الزبون        | السائق       | العنوان      \n';
       response += '--------------|--------------|--------------|--------------\n';
       rides.forEach(ride => {
-        response += `${ride._id.toString().padEnd(14)} | ${ride.userName.padEnd(12)} | ${ride.driverName.padEnd(12)} | ${ride.userAddress.padEnd(12)}\n`;
+        response += `${ride._id.toString().padEnd(14)} | ${ride.userName.padEnd(12)} | ${ride.driverName.padEnd(12)} | ${ride.status.padEnd(12)}\n`;
       });
       response += '```';
       bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
