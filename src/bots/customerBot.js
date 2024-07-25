@@ -104,6 +104,14 @@ async function handlePhoneInput(chatId, phone) {
 
 
 async function handleMainMenuInput(chatId, messageText) {
+  const user = await User.findOne({ telegramId: chatId });
+
+  if (!user) {
+    userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
+    await bot.sendMessage(chatId, 'الرجاء إدخال رقم هاتفك للتسجيل:');
+    return;
+  }
+
   switch (messageText) {
     case '🚖 اريد طاكسي':
     case '1':
@@ -125,7 +133,8 @@ async function handleMainMenuInput(chatId, messageText) {
 async function requestTaxi(chatId) {
   const user = await User.findOne({ telegramId: chatId });
   if (!user) {
-    await bot.sendMessage(chatId, 'يجب عليك التسجيل أولاً قبل طلب طاكسي. الرجاء اختيار "تعديل معلوماتي" للتسجيل.', mainMenu);
+    await bot.sendMessage(chatId, 'الرجاء إدخال رقم هاتفك للتسجيل:');
+    userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
     return;
   }
   userStates.set(chatId, CHAT_STATES.AWAITING_ADDRESS);
