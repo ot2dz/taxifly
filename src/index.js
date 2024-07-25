@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const customerBot = require('./bots/customerBot');
 const driverBot = require('./bots/driverBot');
+const adminBot = require('./bots/adminBot'); // استيراد بوت الإدمن
 const config = require('./config');
 const { connectDB } = require('./services/databaseService'); // استيراد دالة الاتصال بقاعدة البيانات
 
@@ -26,6 +27,12 @@ app.post(`/bot${config.DRIVER_BOT_TOKEN}`, (req, res) => {
   res.sendStatus(200);
 });
 
+// إعداد Webhook للبوت الخاص بالإدمن
+app.post(`/bot${config.ADMIN_BOT_TOKEN}`, (req, res) => {
+  adminBot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   
@@ -36,4 +43,8 @@ app.listen(PORT, () => {
   // ضبط Webhook للبوت الخاص بالسائقين
   const driverWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.DRIVER_BOT_TOKEN}`;
   driverBot.bot.setWebHook(driverWebhookUrl);
+
+  // ضبط Webhook للبوت الخاص بالإدمن
+  const adminWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.ADMIN_BOT_TOKEN}`;
+  adminBot.setWebHook(adminWebhookUrl);
 });
