@@ -273,11 +273,21 @@ async function handleDriverAcceptance(driverId, userId) {
     if (user) {
       const userPhoneNumber = user.phoneNumber;
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: ${userPhoneNumber}.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف`);
+
+      // إرسال الرسالة الأولى للسائق
+      await bot.sendMessage(driverId, 'تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي:');
+
+      // إرسال رقم الهاتف للسائق
+      await bot.sendMessage(driverId, `${userPhoneNumber}`);
+
+      // إرسال أسعار الخدمة للسائق
+      await bot.sendMessage(driverId, 'أسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف');
 
       // إشعار الزبون بقبول الطلب عبر بوت الزبون
       const { bot: customerBot } = require('./customerBot');
-      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف\n - لطلب طاكسي دائما ارسل رقم 1 فقط هنا');
+      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.');
+      await customerBot.sendMessage(userId, 'أسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف');
+
       removeRideRequest(userId);
       driverStates.set(userId, CHAT_STATES.IDLE);
     }
@@ -285,6 +295,7 @@ async function handleDriverAcceptance(driverId, userId) {
     console.error('Error in handleDriverAcceptance:', error);
   }
 }
+
 
 
 
