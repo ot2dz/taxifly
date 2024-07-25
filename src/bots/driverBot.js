@@ -273,7 +273,7 @@ async function handleDriverAcceptance(driverId, userId) {
     if (user) {
       const userPhoneNumber = user.phoneNumber;
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: ${userPhoneNumber}`);
+      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: ${userPhoneNumber}.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف`);
 
       // إشعار الزبون بقبول الطلب عبر بوت الزبون
       const { bot: customerBot } = require('./customerBot');
