@@ -273,7 +273,6 @@ async function handleDriverAcceptance(driverId, userId) {
     if (user) {
       const userPhoneNumber = user.phoneNumber;
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-
       // إرسال الرسالة الأولى للسائق
       await bot.sendMessage(driverId, 'تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي:');
 
@@ -285,9 +284,7 @@ async function handleDriverAcceptance(driverId, userId) {
 
       // إشعار الزبون بقبول الطلب عبر بوت الزبون
       const { bot: customerBot } = require('./customerBot');
-      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.');
-      await customerBot.sendMessage(userId, 'أسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف');
-
+      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف\n - لطلب طاكسي دائما ارسل رقم 1 فقط هنا');
       removeRideRequest(userId);
       driverStates.set(userId, CHAT_STATES.IDLE);
     }
@@ -295,7 +292,6 @@ async function handleDriverAcceptance(driverId, userId) {
     console.error('Error in handleDriverAcceptance:', error);
   }
 }
-
 
 
 
