@@ -277,8 +277,7 @@ async function handleDriverAcceptance(driverId, userId) {
 
       // إشعار الزبون بقبول الطلب عبر بوت الزبون
       const { bot: customerBot } = require('./customerBot');
-      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف');
-
+      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف\n - لطلب طاكسي دائما ارسل رقم 1 فقط هنا');
       removeRideRequest(userId);
       driverStates.set(userId, CHAT_STATES.IDLE);
     }
