@@ -121,7 +121,7 @@ bot.onText(/\/getAllDrivers/, async (msg) => {
       response += 'الاسم          | الهاتف        | السيارة     \n';
       response += '---------------|--------------|--------------\n';
       drivers.forEach(driver => {
-        response += `${driver.name.padEnd(15)} | ${driver.phoneNumber.padEnd(12)} | ${driver.carType.padEnd(12)}\n`;
+        response += `${(driver.name || '-').padEnd(15)} | ${(driver.phoneNumber || '-').padEnd(12)} | ${(driver.carType || '-').padEnd(12)}\n`;
       });
       response += '```';
       bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
@@ -146,7 +146,7 @@ bot.onText(/\/getAllCustomers/, async (msg) => {
       response += 'الهاتف          | العنوان        \n';
       response += '---------------|----------------\n';
       users.forEach(user => {
-        response += `${user.phoneNumber.padEnd(15)} | ${user.address ? user.address.padEnd(16) : 'غير محدد'.padEnd(16)}\n`;
+        response += `${(user.phoneNumber || '-').padEnd(15)} | ${(user.address || 'غير محدد').padEnd(16)}\n`;
       });
       response += '```';
       bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
@@ -168,10 +168,10 @@ bot.onText(/\/getAllRides/, async (msg) => {
     if (rides.length > 0) {
       let response = 'قائمة الرحلات:\n';
       response += '```\n';
-      response += 'ID            | الزبون        | السائق       | العنوان      \n';
+      response += 'ID            | الزبون        | السائق       | الحالة      \n';
       response += '--------------|--------------|--------------|--------------\n';
       rides.forEach(ride => {
-        response += `${ride._id.toString().padEnd(14)} | ${ride.userName.padEnd(12)} | ${ride.driverName.padEnd(12)} | ${ride.status.padEnd(12)}\n`;
+        response += `${(ride._id.toString() || '-').padEnd(14)} | ${(ride.userName || '-').padEnd(12)} | ${(ride.driverName || '-').padEnd(12)} | ${(ride.status || '-').padEnd(12)}\n`;
       });
       response += '```';
       bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
