@@ -273,15 +273,7 @@ async function handleDriverAcceptance(driverId, userId) {
     if (user) {
       const userPhoneNumber = user.phoneNumber;
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: ${userPhoneNumber}`, {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: userPhoneNumber, url: `tel:${userPhoneNumber}` }
-            ]
-          ]
-        }
-      });
+      await bot.sendMessage(driverId, `تم قبول طلبك! يمكنك الاتصال بالزبون على الرقم التالي: ${userPhoneNumber}`);
 
       // إشعار الزبون بقبول الطلب عبر بوت الزبون
       const { bot: customerBot } = require('./customerBot');
