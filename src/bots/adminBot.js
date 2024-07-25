@@ -117,10 +117,14 @@ bot.onText(/\/getAllDrivers/, async (msg) => {
     const drivers = await Driver.find({});
     if (drivers.length > 0) {
       let response = 'قائمة السائقين:\n';
+      response += '```\n';
+      response += 'الاسم          | الهاتف        | السيارة     \n';
+      response += '---------------|--------------|--------------\n';
       drivers.forEach(driver => {
-        response += `- ${driver.name} (ID: ${driver.telegramId}, هاتف: ${driver.phoneNumber}, سيارة: ${driver.carType})\n`;
+        response += `${driver.name.padEnd(15)} | ${driver.phoneNumber.padEnd(12)} | ${driver.carType.padEnd(12)}\n`;
       });
-      bot.sendMessage(chatId, response);
+      response += '```';
+      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
     } else {
       bot.sendMessage(chatId, 'لا يوجد سائقين مسجلين.');
     }
@@ -138,10 +142,14 @@ bot.onText(/\/getAllCustomers/, async (msg) => {
     const users = await User.find({});
     if (users.length > 0) {
       let response = 'قائمة الزبائن:\n';
+      response += '```\n';
+      response += 'الهاتف          | العنوان        \n';
+      response += '---------------|----------------\n';
       users.forEach(user => {
-        response += `- ${user.phoneNumber} (ID: ${user.telegramId}, عنوان: ${user.address || 'غير محدد'})\n`;
+        response += `${user.phoneNumber.padEnd(15)} | ${user.address ? user.address.padEnd(16) : 'غير محدد'.padEnd(16)}\n`;
       });
-      bot.sendMessage(chatId, response);
+      response += '```';
+      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
     } else {
       bot.sendMessage(chatId, 'لا يوجد زبائن مسجلين.');
     }
@@ -159,10 +167,14 @@ bot.onText(/\/getAllRides/, async (msg) => {
     const rides = await Ride.find({});
     if (rides.length > 0) {
       let response = 'قائمة الرحلات:\n';
+      response += '```\n';
+      response += 'ID            | الزبون        | السائق       |      العنوان      \n';
+      response += '--------------|--------------|--------------|--------------\n';
       rides.forEach(ride => {
-        response += `- رحلة (ID: ${ride._id}):\n  زبون: ${ride.userName} (ID: ${ride.userId}, هاتف: ${ride.userPhone})\n  سائق: ${ride.driverName} (ID: ${ride.driverId}, هاتف: ${ride.driverPhone})\n  حالة: ${ride.status}\n`;
+        response += `${ride._id.toString().padEnd(14)} | ${ride.userAddress.padEnd(12)} | ${ride.driverName.padEnd(12)} | ${ride.status.padEnd(12)}\n`;
       });
-      bot.sendMessage(chatId, response);
+      response += '```';
+      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
     } else {
       bot.sendMessage(chatId, 'لا يوجد رحلات مسجلة.');
     }
