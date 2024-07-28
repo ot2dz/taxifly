@@ -8,8 +8,6 @@ const mongoose = require('mongoose');
 const { bot: customerBot } = require('./customerBot');
 const adminBot = require('./adminBot'); // استيراد بوت الإدمن
 
-
-
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
 const adminChatId = config.ADMIN_CHAT_ID;
 
@@ -40,19 +38,12 @@ bot.onText(/\/start/, async (msg) => {
     const driver = await Driver.findOne({ telegramId: chatId });
 
     if (driver) {
-
       if (driver.registrationStatus === 'pending') {
-
         await bot.sendMessage(chatId, 'طلبك قيد المراجعة من قبل الإدارة.');
-
       } else if (driver.registrationStatus === 'approved') {
-
         driverStates.set(chatId, CHAT_STATES.IDLE);
-
         await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! كيف يمكنني مساعدتك اليوم؟', mainMenu);
-
       }
-
     } else {
       driverStates.set(chatId, CHAT_STATES.IDLE);
       await bot.sendMessage(chatId, 'مرحبًا بك في نظام السائقين! يمكنك التسجيل كسائق جديد أو عرض المعلومات المتاحة.', mainMenu);
@@ -120,21 +111,18 @@ async function handleCarTypeInput(chatId, carType) {
       throw new Error('Phone number cannot be empty');
     }
 
-    // البحث عن السائق باستخدام telegramId
     let driver = await Driver.findOne({ telegramId: chatId });
 
     if (driver) {
-      // تحديث معلومات السائق الموجود
       driver.name = name;
       driver.phoneNumber = phone;
       driver.carType = carType;
       driver.registrationStatus = 'pending';
     } else {
-      // إنشاء سائق جديد
-      driver = new Driver({ 
-        telegramId: chatId, 
-        name: name, 
-        phoneNumber: phone, 
+      driver = new Driver({
+        telegramId: chatId,
+        name: name,
+        phoneNumber: phone,
         carType: carType,
         registrationStatus: 'pending'
       });
@@ -147,23 +135,14 @@ async function handleCarTypeInput(chatId, carType) {
     driverStates.delete(chatId + '_phone');
     await bot.sendMessage(chatId, 'تم إرسال طلبك للمراجعة. سيتم إعلامك عند الموافقة على طلبك.');
 
-
-
-    // إرسال طلب الموافقة للإدمن
-
-    const adminChatId = config.ADMIN_CHAT_ID;
-
-    if (!adminChatId) {
-      console.error('ADMIN_CHAT_ID is not defined in config.');
-    } else {
+    if (adminChatId) {
       await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${driver._id} للموافقة\n/reject_${driver._id} لرفض`);
+    } else {
+      console.error('ADMIN_CHAT_ID is not defined in config.');
     }
-
-    await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${driver._id} للموافقة\n/reject_${driver._id} لرفض`);
   } catch (error) {
     console.error('Error saving driver info:', error);
     if (error.code === 11000) {
-      // حدث خطأ بسبب تكرار المفتاح
       await bot.sendMessage(chatId, 'عذرًا، يبدو أنك مسجل بالفعل. إذا كنت ترغب في تحديث معلوماتك، يرجى استخدام خيار "تعديل معلوماتي".');
     } else if (error.message === 'Missing required information') {
       await bot.sendMessage(chatId, 'عذرًا، بعض المعلومات المطلوبة مفقودة. الرجاء بدء عملية التسجيل من جديد.');
@@ -196,57 +175,34 @@ async function handleMainMenuInput(chatId, messageText) {
 }
 
 async function registerDriver(chatId) {
-
   const existingDriver = await Driver.findOne({ telegramId: chatId });
 
   if (existingDriver) {
-
     if (existingDriver.registrationStatus === 'pending') {
-
       await bot.sendMessage(chatId, 'طلبك قيد المراجعة من قبل الإدارة.');
-
     } else {
-
       await bot.sendMessage(chatId, 'أنت مسجل بالفعل كسائق. هل ترغب في تعديل معلوماتك؟', mainMenu);
-
     }
-
   } else {
-
     driverStates.set(chatId, CHAT_STATES.AWAITING_NAME);
-
     await bot.sendMessage(chatId, 'لنبدأ عملية التسجيل. الرجاء إدخال اسمك:');
-
   }
-
 }
 
 async function showDriverInfo(chatId) {
-
   try {
-
     const driver = await Driver.findOne({ telegramId: chatId });
 
     if (driver) {
-
       const status = driver.isAvailable ? 'متاح' : 'غير متاح';
-
       await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}\nالحالة: ${status}`, mainMenu);
-
     } else {
-
       await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً باستخدام زر "تسجيل كسائق".', mainMenu);
-
     }
-
   } catch (error) {
-
     console.error('Error fetching driver info:', error);
-
     await bot.sendMessage(chatId, 'حدث خطأ أثناء استرجاع المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.', mainMenu);
-
   }
-
 }
 
 async function toggleAvailability(chatId) {
@@ -267,20 +223,19 @@ async function toggleAvailability(chatId) {
 }
 
 bot.on('callback_query', async (callbackQuery) => {
-    const driverId = callbackQuery.from.id;
-    const data = callbackQuery.data;
-  
-    if (data.startsWith('accept_ride_')) {
-      const rideId = data.split('_')[2];
-      await handleAcceptRide(driverId, rideId);
-      // إزالة الزر بعد الضغط عليه
-      await bot.answerCallbackQuery(callbackQuery.id);
-      await bot.editMessageReplyMarkup({ inline_keyboard: [] }, {
-        chat_id: driverId,
-        message_id: callbackQuery.message.message_id
-      });
-    }
-  });
+  const driverId = callbackQuery.from.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('accept_ride_')) {
+    const rideId = data.split('_')[2];
+    await handleAcceptRide(driverId, rideId);
+    await bot.answerCallbackQuery(callbackQuery.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, {
+      chat_id: driverId,
+      message_id: callbackQuery.message.message_id
+    });
+  }
+});
 
 async function handleAcceptRide(driverId, rideId) {
   try {
@@ -301,7 +256,7 @@ async function handleAcceptRide(driverId, rideId) {
       rideRequest.status = 'accepted';
 
       const newRide = new Ride({
-        userId: rideRequest.userId, // `telegramId` الخاص بالمستخدم
+        userId: rideRequest.userId,
         userPhone: user.phoneNumber,
         userAddress: user.address,
         driverId: driver._id,
@@ -310,7 +265,7 @@ async function handleAcceptRide(driverId, rideId) {
         status: 'accepted'
       });
 
-      await newRide.save(); // تسجيل الرحلة المقبولة في قاعدة البيانات
+      await newRide.save();
 
       console.log(`handleDriverAcceptance called with driverId: ${driverId} and userId: ${rideRequest.userId}`);
       await handleDriverAcceptance(driverId, rideRequest.userId);
@@ -331,17 +286,10 @@ async function handleDriverAcceptance(driverId, userId) {
     if (user) {
       const userPhoneNumber = user.phoneNumber;
       console.log(`handleDriverAcceptance: Sending user phone number to driver ${driverId}`);
-      // إرسال الرسالة الأولى للسائق
       await bot.sendMessage(driverId, 'تم قبول طلبك! الزبون في انتظارك قم بالاتصال به الان :');
-
-      // إرسال رقم الهاتف للسائق
       await bot.sendMessage(driverId, `${userPhoneNumber}`);
-
-      // إرسال أسعار الخدمة للسائق
       await bot.sendMessage(driverId, 'أسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف');
 
-      // إشعار الزبون بقبول الطلب عبر بوت الزبون
-      const { bot: customerBot } = require('./customerBot');
       await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف\n - لطلب طاكسي دائما ارسل رقم 1 فقط هنا');
       removeRideRequest(userId);
       driverStates.set(userId, CHAT_STATES.IDLE);
@@ -351,8 +299,6 @@ async function handleDriverAcceptance(driverId, userId) {
   }
 }
 
-
-
 async function notifyDrivers(user, address) {
   console.log('Starting notifyDrivers function');
   const drivers = await Driver.find({ registrationStatus: 'approved' });
@@ -360,16 +306,15 @@ async function notifyDrivers(user, address) {
 
   if (drivers.length === 0) {
     console.log('No drivers found');
-    // يمكنك هنا إضافة منطق لإخبار الزبون أنه لا يوجد سائقين متاحين حاليًا
     return;
   }
 
   const rideId = Date.now().toString();
-  addRideRequest(rideId, user.telegramId); // تمرير telegramId للمستخدم
+  addRideRequest(rideId, user.telegramId);
 
   for (const driver of drivers) {
     const message = `زبون جديد يحتاج إلى طاكسي!\nعنوان الزبون: ${address}\n اضغط على الزر في الاسفل لقبول الطلب`;
-     const options = {
+    const options = {
       reply_markup: {
         inline_keyboard: [[
           { text: 'قبول الطلب', callback_data: `accept_ride_${rideId}` }
@@ -387,9 +332,8 @@ async function notifyDrivers(user, address) {
   console.log('Finished notifyDrivers function');
 }
 
-// في نهاية الملف
-module.exports = { 
-  bot, 
-  notifyDrivers, 
-  rideRequests // تصدير rideRequests
+module.exports = {
+  bot,
+  notifyDrivers,
+  rideRequests
 };
