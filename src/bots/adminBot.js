@@ -183,25 +183,27 @@ bot.onText(/\/getAllRides/, async (msg) => {
   }
 });
 
-bot.onText(/\/approve_(.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const driverId = match[1];
-
-  try {
-    const driver = await Driver.findOne({ _id: driverId, registrationStatus: 'pending' });
-    if (driver) {
+adminBot.onText(/\/approve_(.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const driverId = match[1];
+  
+    try {
+      const driver = await Driver.findById(driverId);
+      if (!driver) {
+        await adminBot.sendMessage(chatId, 'لم يتم العثور على السائق.');
+        return;
+      }
+  
       driver.registrationStatus = 'approved';
       await driver.save();
-      await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك. يمكنك الآن استخدام البوت.');
-      bot.sendMessage(chatId, 'تمت الموافقة على السائق.');
-    } else {
-      bot.sendMessage(chatId, 'لم يتم العثور على السائق أو أنه تم الموافقة عليه بالفعل.');
+  
+      await adminBot.sendMessage(chatId, 'تمت الموافقة على تسجيل السائق.');
+      await adminBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+    } catch (error) {
+      console.error('Error approving driver:', error);
+      await adminBot.sendMessage(chatId, 'حدث خطأ أثناء محاولة الموافقة على تسجيل السائق.');
     }
-  } catch (error) {
-    console.error('Error approving driver:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء الموافقة على السائق.');
-  }
-});
+  });
 
 bot.onText(/\/reject_(.+)/, async (msg, match) => {
   const chatId = msg.chat.id;

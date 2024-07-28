@@ -1,3 +1,4 @@
+// driverBot.js
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const Driver = require('../models/Driver');
@@ -8,7 +9,7 @@ const mongoose = require('mongoose');
 const { bot: customerBot } = require('./customerBot');
 const adminBot = require('./adminBot'); // استيراد بوت الإدمن
 
-const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
+const bot = new TelegramBot(config.DRIVER_BOT_TOKEN, { polling: true });
 const adminChatId = config.ADMIN_CHAT_ID;
 
 const driverStates = new Map();
@@ -111,22 +112,13 @@ async function handleCarTypeInput(chatId, carType) {
       throw new Error('Phone number cannot be empty');
     }
 
-    let driver = await Driver.findOne({ telegramId: chatId });
-
-    if (driver) {
-      driver.name = name;
-      driver.phoneNumber = phone;
-      driver.carType = carType;
-      driver.registrationStatus = 'pending';
-    } else {
-      driver = new Driver({
-        telegramId: chatId,
-        name: name,
-        phoneNumber: phone,
-        carType: carType,
-        registrationStatus: 'pending'
-      });
-    }
+    const driver = new Driver({
+      telegramId: chatId,
+      name: name,
+      phoneNumber: phone,
+      carType: carType,
+      registrationStatus: 'pending'
+    });
 
     await driver.save();
 
