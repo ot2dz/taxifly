@@ -6,6 +6,8 @@ const User = require('../models/User');
 const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
 const { bot: customerBot } = require('./customerBot');
+const adminBot = require('./adminBot'); // استيراد بوت الإدمن
+
 
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
