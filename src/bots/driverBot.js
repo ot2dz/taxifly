@@ -1,11 +1,9 @@
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const Driver = require('../models/Driver');
-const { addRideRequest, getRideRequest, removeRideRequest } = require('./sharedRideFunctions');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
-const { bot: customerBot } = require('./customerBot');
 const adminBot = require('./adminBot');
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN, { polling: true });
@@ -111,7 +109,6 @@ async function handleCarTypeInput(chatId, carType) {
       throw new Error('Phone number cannot be empty');
     }
 
-    // إنشاء سائق جديد مع حالة التسجيل 'pending'
     const newDriver = new Driver({
       telegramId: chatId,
       name: name,
@@ -120,7 +117,6 @@ async function handleCarTypeInput(chatId, carType) {
       registrationStatus: 'pending'
     });
 
-    // حفظ السائق في قاعدة البيانات
     await newDriver.save();
 
     driverStates.set(chatId, CHAT_STATES.IDLE);
@@ -128,7 +124,6 @@ async function handleCarTypeInput(chatId, carType) {
     driverStates.delete(chatId + '_phone');
     await bot.sendMessage(chatId, 'تم إرسال طلبك للمراجعة. سيتم إعلامك عند الموافقة على طلبك.');
 
-    // إرسال إشعار إلى الإدارة للموافقة
     if (adminChatId) {
       await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${chatId} للموافقة\n/reject_${chatId} لرفض`);
     } else {
@@ -197,10 +192,190 @@ async function showDriverInfo(chatId) {
   }
 }
 
-// باقي الكود يبقى كما هو...
+async function notifyDrivers(user, address) {
+  console.log('Starting notifyDrivers function');
+  const drivers = await Driver.find({ registrationStatus: 'approved' });
+  console.log(`Found ${drivers.length} drivers`);
 
+  if (drivers.length === 0) {
+    console.log('No drivers found');
+    return;
+  }
+
+  const rideId = Date.now().toString();
+  rideRequests.set(rideId, { userId: user.telegramId, status: 'pending' });
+
+  for (const driver of drivers) {
+    const message = `زبون جديد يحتاج إلى طاكسي!\nعنوان الزبون: ${address}\n اضغط على الزر في الاسفل لقبول الطلب`;
+    const options = {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'قبول الطلب', callback_data: `accept_ride_${rideId}` }
+        ]]
+      }
+    };
+    try {
+      console.log(`Sending notification to driver ${driver.telegramId}`);
+      await bot.sendMessage(driver.telegramId, message, options);
+      console.log(`Notification sent successfully to driver ${driver.telegramId}`);
+    } catch (error) {
+      console.error(`Failed to send notification to driver ${driver.telegramId}:`, error);
+    }
+  }
+  console.log('Finished notifyDrivers function');
+}
+
+bot.on('callback_query', async (callbackQuery) => {
+  const driverId = callbackQuery.from.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('accept_ride_')) {
+    const rideId = data.split('_')[2];
+    await handleAcceptRide(driverId, rideId);
+    await bot.answerCallbackQuery(callbackQuery.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, {
+      chat_id: driverId,
+      message_id: callbackQuery.message.message_id
+    });
+  }
+});
+
+async function handleAcceptRide(driverId, rideId) {
+  try {
+    const rideRequest = rideRequests.get(rideId);
+    if (!rideRequest) {
+      await bot.sendMessage(driverId, 'عذرًا، هذا الطلب لم يعد متاحًا.');
+      return;
+    }
+
+    if (rideRequest.status === 'accepted') {
+      await bot.sendMessage(driverId, 'عذرًا، هذا الطلب تم قبوله بالفعل.');
+      return;
+    }
+
+    const driver = await Driver.findOne({ telegramId: driverId });
+    const user = await User.findOne({ telegramId: rideRequest.userId });
+    if (driver && user) {
+      rideRequest.status = 'accepted';
+
+      const newRide = new Ride({
+        userId: rideRequest.userId,
+        userPhone: user.phoneNumber,
+        userAddress: user.address,
+        driverId: driver._id,
+        driverName: driver.name,
+        driverPhone: driver.phoneNumber,
+        status: 'accepted'
+      });
+
+      await newRide.save();
+
+      await handleDriverAcceptance(driverId, rideRequest.userId);
+    } else {
+      await bot.sendMessage(driverId, 'عذرًا، لا يمكنك قبول هذا الطلب حاليًا. تأكد من أنك مسجل كسائق.');
+    }
+  } catch (error) {
+    console.error('Error in handleAcceptRide:', error);
+    await bot.sendMessage(driverId, 'حدث خطأ أثناء قبول الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
+  }
+}
+async function handleDriverAcceptance(driverId, userId) {
+  try {
+    const user = await User.findOne({ telegramId: userId });
+
+    if (user) {
+      const userPhoneNumber = user.phoneNumber;
+      await bot.sendMessage(driverId, 'تم قبول طلبك! الزبون في انتظارك قم بالاتصال به الان :');
+      await bot.sendMessage(driverId, `${userPhoneNumber}`);
+      await bot.sendMessage(driverId, 'أسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف');
+
+      // إعلام الزبون بأن طلبه قد تم قبوله
+      const customerBot = require('./customerBot').bot;
+      await customerBot.sendMessage(userId, 'شكرا , لقد تم قبول طلبك , سيتم الاتصال بك من طرف السائق الان.\n\nأسعار الخدمة:\n- وسط عين صالح: 15 ألف\n- البركة: 25 ألف\n- الساهلتين: 55 ألف\n - لطلب طاكسي دائما ارسل رقم 1 فقط هنا');
+      
+      // حذف طلب الرحلة من القائمة
+      for (let [rideId, request] of rideRequests.entries()) {
+        if (request.userId === userId) {
+          rideRequests.delete(rideId);
+          break;
+        }
+      }
+
+      // إعادة تعيين حالة السائق إلى IDLE
+      driverStates.set(driverId, CHAT_STATES.IDLE);
+    } else {
+      console.error(`User not found for userId: ${userId}`);
+      await bot.sendMessage(driverId, 'حدث خطأ أثناء معالجة الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
+    }
+  } catch (error) {
+    console.error('Error in handleDriverAcceptance:', error);
+    await bot.sendMessage(driverId, 'حدث خطأ أثناء معالجة الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
+  }
+}
+
+// دالة لتحديث معلومات السائق
+async function updateDriverInfo(chatId, field, value) {
+  try {
+    const driver = await Driver.findOne({ telegramId: chatId });
+    if (driver) {
+      driver[field] = value;
+      await driver.save();
+      await bot.sendMessage(chatId, `تم تحديث ${field} بنجاح.`, mainMenu);
+    } else {
+      await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً.', mainMenu);
+    }
+  } catch (error) {
+    console.error('Error updating driver info:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء تحديث المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.', mainMenu);
+  }
+}
+
+// تعديل دالة handleMainMenuInput لتشمل خيار تحديث المعلومات
+async function handleMainMenuInput(chatId, messageText) {
+  switch (messageText) {
+    case '📝 تسجيل كسائق':
+      await registerDriver(chatId);
+      break;
+    case 'ℹ️ معلوماتي':
+      await showDriverInfo(chatId);
+      break;
+    case '✏️ تعديل معلوماتي':
+      await bot.sendMessage(chatId, 'ما الذي تريد تعديله؟', {
+        reply_markup: {
+          keyboard: [
+            ['الاسم', 'رقم الهاتف', 'نوع السيارة'],
+            ['رجوع للقائمة الرئيسية']
+          ],
+          resize_keyboard: true
+        }
+      });
+      break;
+    case 'الاسم':
+      driverStates.set(chatId, CHAT_STATES.AWAITING_NAME);
+      await bot.sendMessage(chatId, 'الرجاء إدخال اسمك الجديد:');
+      break;
+    case 'رقم الهاتف':
+      driverStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
+      await bot.sendMessage(chatId, 'الرجاء إدخال رقم هاتفك الجديد:');
+      break;
+    case 'نوع السيارة':
+      driverStates.set(chatId, CHAT_STATES.AWAITING_CAR_TYPE);
+      await bot.sendMessage(chatId, 'الرجاء إدخال نوع سيارتك الجديد:');
+      break;
+    case 'رجوع للقائمة الرئيسية':
+      driverStates.set(chatId, CHAT_STATES.IDLE);
+      await bot.sendMessage(chatId, 'تم العودة للقائمة الرئيسية', mainMenu);
+      break;
+    default:
+      await bot.sendMessage(chatId, 'عذرًا، لم أفهم طلبك. الرجاء اختيار أحد الخيارات المتاحة.', mainMenu);
+  }
+}
+
+// تصدير الدوال والمتغيرات اللازمة
 module.exports = {
   bot,
   notifyDrivers,
-  rideRequests
+  rideRequests,
+  CHAT_STATES
 };
+
