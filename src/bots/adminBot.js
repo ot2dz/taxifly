@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const Driver = require('../models/Driver');
 const User = require('../models/User');
-const Ride = require('../models/Ride'); // استيراد نموذج الرحلات
+const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
 const { bot: driverBot } = require('./driverBot');
 
@@ -119,10 +119,10 @@ bot.onText(/\/getAllDrivers/, async (msg) => {
     if (drivers.length > 0) {
       let response = 'قائمة السائقين:\n';
       response += '```\n';
-      response += 'الاسم          | الهاتف        | السيارة     \n';
-      response += '---------------|--------------|--------------\n';
+      response += 'الاسم          | الهاتف        | السيارة     | الحالة\n';
+      response += '---------------|--------------|-------------|-------\n';
       drivers.forEach(driver => {
-        response += `${(driver.name || '-').padEnd(15)} | ${(driver.phoneNumber || '-').padEnd(12)} | ${(driver.carType || '-').padEnd(12)}\n`;
+        response += `${(driver.name || '-').padEnd(15)} | ${(driver.phoneNumber || '-').padEnd(12)} | ${(driver.carType || '-').padEnd(11)} | ${driver.registrationStatus}\n`;
       });
       response += '```';
       bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
@@ -214,6 +214,7 @@ bot.onText(/\/reject_(.+)/, async (msg, match) => {
     if (driver) {
       await driver.remove();
       bot.sendMessage(chatId, 'تم رفض السائق وحذف طلب التسجيل.');
+      await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
     } else {
       bot.sendMessage(chatId, 'لم يتم العثور على السائق أو أنه تم الموافقة عليه بالفعل.');
     }
