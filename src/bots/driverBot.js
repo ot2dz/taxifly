@@ -37,8 +37,19 @@ bot.onText(/\/start/, async (msg) => {
     const driver = await Driver.findOne({ telegramId: chatId });
 
     if (driver) {
-      driverStates.set(chatId, CHAT_STATES.IDLE);
-      await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! كيف يمكنني مساعدتك اليوم؟', mainMenu);
+
+      if (driver.registrationStatus === 'pending') {
+
+        await bot.sendMessage(chatId, 'طلبك قيد المراجعة من قبل الإدارة.');
+
+      } else if (driver.registrationStatus === 'approved') {
+
+        driverStates.set(chatId, CHAT_STATES.IDLE);
+
+        await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! كيف يمكنني مساعدتك اليوم؟', mainMenu);
+
+      }
+
     } else {
       driverStates.set(chatId, CHAT_STATES.IDLE);
       await bot.sendMessage(chatId, 'مرحبًا بك في نظام السائقين! يمكنك التسجيل كسائق جديد أو عرض المعلومات المتاحة.', mainMenu);
@@ -114,6 +125,7 @@ async function handleCarTypeInput(chatId, carType) {
       driver.name = name;
       driver.phoneNumber = phone;
       driver.carType = carType;
+      driver.registrationStatus = 'pending';
     } else {
       // إنشاء سائق جديد
       driver = new Driver({ 
@@ -121,7 +133,7 @@ async function handleCarTypeInput(chatId, carType) {
         name: name, 
         phoneNumber: phone, 
         carType: carType,
-        isAvailable: true
+        registrationStatus: 'pending'
       });
     }
 
@@ -130,7 +142,15 @@ async function handleCarTypeInput(chatId, carType) {
     driverStates.set(chatId, CHAT_STATES.IDLE);
     driverStates.delete(chatId + '_name');
     driverStates.delete(chatId + '_phone');
-    await bot.sendMessage(chatId, 'تم تسجيل معلوماتك بنجاح! أنت الآن متاح لاستقبال الطلبات.', mainMenu);
+    await bot.sendMessage(chatId, 'تم إرسال طلبك للمراجعة. سيتم إعلامك عند الموافقة على طلبك.');
+
+
+
+    // إرسال طلب الموافقة للإدمن
+
+    const adminChatId = config.ADMIN_CHAT_ID;
+
+    await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${driver._id} للموافقة\n/reject_${driver._id} لرفض`);
   } catch (error) {
     console.error('Error saving driver info:', error);
     if (error.code === 11000) {
@@ -167,28 +187,57 @@ async function handleMainMenuInput(chatId, messageText) {
 }
 
 async function registerDriver(chatId) {
+
   const existingDriver = await Driver.findOne({ telegramId: chatId });
+
   if (existingDriver) {
-    await bot.sendMessage(chatId, 'أنت مسجل بالفعل كسائق. هل ترغب في تعديل معلوماتك؟', mainMenu);
+
+    if (existingDriver.registrationStatus === 'pending') {
+
+      await bot.sendMessage(chatId, 'طلبك قيد المراجعة من قبل الإدارة.');
+
+    } else {
+
+      await bot.sendMessage(chatId, 'أنت مسجل بالفعل كسائق. هل ترغب في تعديل معلوماتك؟', mainMenu);
+
+    }
+
   } else {
+
     driverStates.set(chatId, CHAT_STATES.AWAITING_NAME);
+
     await bot.sendMessage(chatId, 'لنبدأ عملية التسجيل. الرجاء إدخال اسمك:');
+
   }
+
 }
 
 async function showDriverInfo(chatId) {
+
   try {
+
     const driver = await Driver.findOne({ telegramId: chatId });
+
     if (driver) {
+
       const status = driver.isAvailable ? 'متاح' : 'غير متاح';
-      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}`, mainMenu);
+
+      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}\nالحالة: ${status}`, mainMenu);
+
     } else {
+
       await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً باستخدام زر "تسجيل كسائق".', mainMenu);
+
     }
+
   } catch (error) {
+
     console.error('Error fetching driver info:', error);
+
     await bot.sendMessage(chatId, 'حدث خطأ أثناء استرجاع المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.', mainMenu);
+
   }
+
 }
 
 async function toggleAvailability(chatId) {
@@ -297,7 +346,7 @@ async function handleDriverAcceptance(driverId, userId) {
 
 async function notifyDrivers(user, address) {
   console.log('Starting notifyDrivers function');
-  const drivers = await Driver.find({});
+  const drivers = await Driver.find({ registrationStatus: 'approved' });
   console.log(`Found ${drivers.length} drivers`);
 
   if (drivers.length === 0) {

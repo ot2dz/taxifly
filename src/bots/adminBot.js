@@ -17,7 +17,11 @@ bot.onText(/\/start/, (msg) => {
     '/sendToCustomer [customerId] [message]\n' +
     '/getAllDrivers\n' +
     '/getAllCustomers\n' +
-    '/getAllRides'
+    '/getAllRides\n' +
+
+    '/approve_[driverId] للموافقة على سائق\n' +
+
+    '/reject_[driverId] لرفض سائق'
   );
 });
 
@@ -26,7 +30,7 @@ bot.onText(/\/sendToAllDrivers (.+)/, async (msg, match) => {
   const message = match[1];
   
   try {
-    const drivers = await Driver.find({});
+    const drivers = await Driver.find({ registrationStatus: 'approved' });
     for (const driver of drivers) {
       try {
         await driverBot.sendMessage(driver.telegramId, message);
@@ -47,7 +51,7 @@ bot.onText(/\/sendToDriver (\d+) (.+)/, async (msg, match) => {
   const message = match[2];
   
   try {
-    const driver = await Driver.findOne({ telegramId: driverId });
+    const driver = await Driver.findOne({ telegramId: driverId, registrationStatus: 'approved' });
     if (driver) {
       try {
         await driverBot.sendMessage(driver.telegramId, message);
@@ -183,5 +187,79 @@ bot.onText(/\/getAllRides/, async (msg) => {
     bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الرحلات.');
   }
 });
+
+bot.onText(/\/approve_(.+)/, async (msg, match) => {
+
+    const chatId = msg.chat.id;
+  
+    const driverId = match[1];
+  
+    
+  
+    try {
+  
+      const driver = await Driver.findOne({ _id: driverId, registrationStatus: 'pending' });
+  
+      if (driver) {
+  
+        driver.registrationStatus = 'approved';
+  
+        await driver.save();
+  
+        await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك. يمكنك الآن استخدام البوت.');
+  
+        bot.sendMessage(chatId, 'تمت الموافقة على السائق.');
+  
+      } else {
+  
+        bot.sendMessage(chatId, 'لم يتم العثور على السائق أو أنه تم الموافقة عليه بالفعل.');
+  
+      }
+  
+    } catch (error) {
+  
+      console.error('Error approving driver:', error);
+  
+      bot.sendMessage(chatId, 'حدث خطأ أثناء الموافقة على السائق.');
+  
+    }
+  
+  });
+  
+  
+  
+  bot.onText(/\/reject_(.+)/, async (msg, match) => {
+  
+    const chatId = msg.chat.id;
+  
+    const driverId = match[1];
+  
+    
+  
+    try {
+  
+      const driver = await Driver.findOne({ _id: driverId, registrationStatus: 'pending' });
+  
+      if (driver) {
+  
+        await driver.remove();
+  
+        bot.sendMessage(chatId, 'تم رفض السائق وحذف طلب التسجيل.');
+  
+      } else {
+  
+        bot.sendMessage(chatId, 'لم يتم العثور على السائق أو أنه تم الموافقة عليه بالفعل.');
+  
+      }
+  
+    } catch (error) {
+  
+      console.error('Error rejecting driver:', error);
+  
+      bot.sendMessage(chatId, 'حدث خطأ أثناء رفض السائق.');
+  
+    }
+  
+  });
 
 module.exports = bot;
