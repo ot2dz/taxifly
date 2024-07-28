@@ -11,6 +11,7 @@ const adminBot = require('./adminBot'); // استيراد بوت الإدمن
 
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
+const adminChatId = config.ADMIN_CHAT_ID;
 
 const driverStates = new Map();
 const rideRequests = new Map();
@@ -151,6 +152,12 @@ async function handleCarTypeInput(chatId, carType) {
     // إرسال طلب الموافقة للإدمن
 
     const adminChatId = config.ADMIN_CHAT_ID;
+
+    if (!adminChatId) {
+      console.error('ADMIN_CHAT_ID is not defined in config.');
+    } else {
+      await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${driver._id} للموافقة\n/reject_${driver._id} لرفض`);
+    }
 
     await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${driver._id} للموافقة\n/reject_${driver._id} لرفض`);
   } catch (error) {
