@@ -3,9 +3,8 @@ const config = require('../config');
 const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride'); // استيراد نموذج الرحلات
-const customerBot = require('./customerBot').bot; // استيراد بوت الزبون
-const driverBot = require('./driverBot').bot; // استيراد بوت السائق
-const pendingDrivers = require('./driverBot').pendingDrivers; // استيراد قائمة السائقين المعلقين
+const { bot: customerBot } = require('./customerBot');
+const { bot: driverBot } = require('./driverBot');
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
 
@@ -186,23 +185,20 @@ bot.onText(/\/getAllRides/, async (msg) => {
 
 bot.onText(/\/approve_(.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
-  const driverId = match[1];
+  const driverTelegramId = match[1];
 
   try {
-    const pendingDriver = pendingDrivers.get(driverId);
-    if (!pendingDriver) {
+    const driver = await Driver.findOne({ telegramId: driverTelegramId });
+    if (!driver) {
       await bot.sendMessage(chatId, 'لم يتم العثور على السائق.');
       return;
     }
 
-    const driver = new Driver(pendingDriver);
     driver.registrationStatus = 'approved';
     await driver.save();
 
-    pendingDrivers.delete(driverId);
-
     await bot.sendMessage(chatId, 'تمت الموافقة على تسجيل السائق.');
-    await bot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+    await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
   } catch (error) {
     console.error('Error approving driver:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء محاولة الموافقة على تسجيل السائق.');
@@ -211,12 +207,12 @@ bot.onText(/\/approve_(.+)/, async (msg, match) => {
 
 bot.onText(/\/reject_(.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
-  const driverId = match[1];
+  const driverTelegramId = match[1];
 
   try {
-    const pendingDriver = pendingDrivers.get(driverId);
-    if (pendingDriver) {
-      pendingDrivers.delete(driverId);
+    const driver = await Driver.findOne({ telegramId: driverTelegramId, registrationStatus: 'pending' });
+    if (driver) {
+      await driver.remove();
       bot.sendMessage(chatId, 'تم رفض السائق وحذف طلب التسجيل.');
     } else {
       bot.sendMessage(chatId, 'لم يتم العثور على السائق أو أنه تم الموافقة عليه بالفعل.');
