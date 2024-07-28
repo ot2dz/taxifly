@@ -2,49 +2,58 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const customerBot = require('./bots/customerBot');
 const driverBot = require('./bots/driverBot');
-const adminBot = require('./bots/adminBot'); // استيراد بوت الإدمن
+const adminBot = require('./bots/adminBot');
 const config = require('./config');
-const { connectDB } = require('./services/databaseService'); // استيراد دالة الاتصال بقاعدة البيانات
+const { connectDB } = require('./services/databaseService');
 
 const app = express();
 
 app.use(bodyParser.json());
 
 const PORT = process.env.PORT || 3000;
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
 // اتصال بقاعدة البيانات
-connectDB(); // استدعاء دالة الاتصال بقاعدة البيانات
+connectDB();
 
-// إعداد Webhook للبوت الخاص بالعملاء
+// إعداد Webhook للبوتات
+const setupWebhook = async (bot, token) => {
+  const webhookUrl = `${APP_URL}/bot${token}`;
+  try {
+    await bot.setWebHook(webhookUrl);
+    console.log(`Webhook set for bot ${token}`);
+  } catch (error) {
+    console.error(`Failed to set webhook for bot ${token}:`, error);
+  }
+};
+
+// معالجة التحديثات للبوتات
 app.post(`/bot${config.CUSTOMER_BOT_TOKEN}`, (req, res) => {
   customerBot.bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// إعداد Webhook للبوت الخاص بالسائقين
 app.post(`/bot${config.DRIVER_BOT_TOKEN}`, (req, res) => {
   driverBot.bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// إعداد Webhook للبوت الخاص بالإدمن
 app.post(`/bot${config.ADMIN_BOT_TOKEN}`, (req, res) => {
   adminBot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   
-  // ضبط Webhook للبوت الخاص بالعملاء
-  const customerWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.CUSTOMER_BOT_TOKEN}`;
-  customerBot.bot.setWebHook(customerWebhookUrl);
-  
-  // ضبط Webhook للبوت الخاص بالسائقين
-  const driverWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.DRIVER_BOT_TOKEN}`;
-  driverBot.bot.setWebHook(driverWebhookUrl);
-
-  // ضبط Webhook للبوت الخاص بالإدمن
-  const adminWebhookUrl = `https://taxibot-b548b9bb94ed.herokuapp.com/bot${config.ADMIN_BOT_TOKEN}`;
-  adminBot.setWebHook(adminWebhookUrl);
+  if (process.env.NODE_ENV === 'production') {
+    await setupWebhook(customerBot.bot, config.CUSTOMER_BOT_TOKEN);
+    await setupWebhook(driverBot.bot, config.DRIVER_BOT_TOKEN);
+    await setupWebhook(adminBot, config.ADMIN_BOT_TOKEN);
+  } else {
+    console.log('Running in development mode. Using long polling for bots.');
+    customerBot.bot.startPolling();
+    driverBot.bot.startPolling();
+    adminBot.startPolling();
+  }
 });
