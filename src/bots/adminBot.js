@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
 //const driverBot = require('./driverBot');
-const { bot: driverBot, notifyDrivers, rideRequests, CHAT_STATES } = require('./driverBot');
+const { bot: driverBot } = require('./driverBot');
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
 
@@ -199,10 +199,15 @@ bot.onText(/\/approve_(.+)/, async (msg, match) => {
     await driver.save();
 
     await bot.sendMessage(chatId, 'تمت الموافقة على تسجيل السائق.');
-    
-    // استخدام driverBot.sendMessage مباشرة
+
+    // إضافة سجل للتحقق من وجود driverBot.sendMessage
+    console.log('driverBot:', driverBot);
+    console.log('typeof driverBot.sendMessage:', typeof driverBot.sendMessage);
+
     if (driverBot && typeof driverBot.sendMessage === 'function') {
+      console.log(`Sending approval message to driver with telegramId: ${driver.telegramId}`);
       await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+      console.log('Message sent successfully.');
     } else {
       console.error('driverBot.sendMessage is not a function');
     }
