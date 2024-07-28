@@ -4,7 +4,7 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
-const driverBot = require('./driverBot');
+//const driverBot = require('./driverBot');
 const { bot: driverBot, notifyDrivers, rideRequests, CHAT_STATES } = require('./driverBot');
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
