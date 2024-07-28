@@ -1,4 +1,3 @@
-// driverBot.js
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const Driver = require('../models/Driver');
@@ -13,7 +12,7 @@ const bot = new TelegramBot(config.DRIVER_BOT_TOKEN, { polling: true });
 const adminChatId = config.ADMIN_CHAT_ID;
 
 const driverStates = new Map();
-const rideRequests = new Map();
+const pendingDrivers = new Map(); // ذاكرة مؤقتة لتخزين طلبات السائقين بانتظار الموافقة
 
 const CHAT_STATES = {
   IDLE: 'IDLE',
@@ -112,15 +111,14 @@ async function handleCarTypeInput(chatId, carType) {
       throw new Error('Phone number cannot be empty');
     }
 
-    const driver = new Driver({
+    const pendingDriver = {
       telegramId: chatId,
       name: name,
       phoneNumber: phone,
-      carType: carType,
-      registrationStatus: 'pending'
-    });
+      carType: carType
+    };
 
-    await driver.save();
+    pendingDrivers.set(chatId, pendingDriver);
 
     driverStates.set(chatId, CHAT_STATES.IDLE);
     driverStates.delete(chatId + '_name');
@@ -128,21 +126,13 @@ async function handleCarTypeInput(chatId, carType) {
     await bot.sendMessage(chatId, 'تم إرسال طلبك للمراجعة. سيتم إعلامك عند الموافقة على طلبك.');
 
     if (adminChatId) {
-      await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${driver._id} للموافقة\n/reject_${driver._id} لرفض`);
+      await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${chatId} للموافقة\n/reject_${chatId} لرفض`);
     } else {
       console.error('ADMIN_CHAT_ID is not defined in config.');
     }
   } catch (error) {
-    console.error('Error saving driver info:', error);
-    if (error.code === 11000) {
-      await bot.sendMessage(chatId, 'عذرًا، يبدو أنك مسجل بالفعل. إذا كنت ترغب في تحديث معلوماتك، يرجى استخدام خيار "تعديل معلوماتي".');
-    } else if (error.message === 'Missing required information') {
-      await bot.sendMessage(chatId, 'عذرًا، بعض المعلومات المطلوبة مفقودة. الرجاء بدء عملية التسجيل من جديد.');
-    } else if (error.message === 'Phone number cannot be empty') {
-      await bot.sendMessage(chatId, 'عذرًا، رقم الهاتف لا يمكن أن يكون فارغًا. الرجاء إدخال رقم هاتف صحيح.');
-    } else {
-      await bot.sendMessage(chatId, 'حدث خطأ أثناء حفظ المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.');
-    }
+    console.error('Error handling car type input:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء حفظ المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.');
     driverStates.set(chatId, CHAT_STATES.IDLE);
     driverStates.delete(chatId + '_name');
     driverStates.delete(chatId + '_phone');
@@ -187,7 +177,7 @@ async function showDriverInfo(chatId) {
 
     if (driver) {
       const status = driver.isAvailable ? 'متاح' : 'غير متاح';
-      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}\nالحالة: ${status}`, mainMenu);
+      await bot.sendMessage(chatId, `معلوماتك:\nالاسم: ${driver.name}\nرقم الهاتف: ${driver.phoneNumber}\nنوع السيارة: ${driver.carType}`, mainMenu);
     } else {
       await bot.sendMessage(chatId, 'لم يتم العثور على معلوماتك. الرجاء التسجيل أولاً باستخدام زر "تسجيل كسائق".', mainMenu);
     }
