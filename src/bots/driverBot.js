@@ -12,7 +12,7 @@ const bot = new TelegramBot(config.DRIVER_BOT_TOKEN, { polling: true });
 const adminChatId = config.ADMIN_CHAT_ID;
 
 const driverStates = new Map();
-const pendingDrivers = new Map(); // ذاكرة مؤقتة لتخزين طلبات السائقين بانتظار الموافقة
+const rideRequests = new Map();
 
 const CHAT_STATES = {
   IDLE: 'IDLE',
@@ -111,14 +111,14 @@ async function handleCarTypeInput(chatId, carType) {
       throw new Error('Phone number cannot be empty');
     }
 
-    const pendingDriver = {
+    // لا تقم بحفظ السائق مباشرة، أرسل الطلب للإدمن للموافقة
+    const driver = {
       telegramId: chatId,
       name: name,
       phoneNumber: phone,
-      carType: carType
+      carType: carType,
+      registrationStatus: 'pending'
     };
-
-    pendingDrivers.set(chatId, pendingDriver);
 
     driverStates.set(chatId, CHAT_STATES.IDLE);
     driverStates.delete(chatId + '_name');
@@ -131,8 +131,14 @@ async function handleCarTypeInput(chatId, carType) {
       console.error('ADMIN_CHAT_ID is not defined in config.');
     }
   } catch (error) {
-    console.error('Error handling car type input:', error);
-    await bot.sendMessage(chatId, 'حدث خطأ أثناء حفظ المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.');
+    console.error('Error saving driver info:', error);
+    if (error.message === 'Missing required information') {
+      await bot.sendMessage(chatId, 'عذرًا، بعض المعلومات المطلوبة مفقودة. الرجاء بدء عملية التسجيل من جديد.');
+    } else if (error.message === 'Phone number cannot be empty') {
+      await bot.sendMessage(chatId, 'عذرًا، رقم الهاتف لا يمكن أن يكون فارغًا. الرجاء إدخال رقم هاتف صحيح.');
+    } else {
+      await bot.sendMessage(chatId, 'حدث خطأ أثناء حفظ المعلومات. الرجاء المحاولة مرة أخرى لاحقًا.');
+    }
     driverStates.set(chatId, CHAT_STATES.IDLE);
     driverStates.delete(chatId + '_name');
     driverStates.delete(chatId + '_phone');
