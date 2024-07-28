@@ -4,7 +4,7 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
-const { bot: driverBot } = require('./driverBot');
+const driverBot = require('./driverBot').bot;
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
 
@@ -198,6 +198,8 @@ bot.onText(/\/approve_(.+)/, async (msg, match) => {
     await driver.save();
 
     await bot.sendMessage(chatId, 'تمت الموافقة على تسجيل السائق.');
+    
+    // استخدام driverBot.sendMessage بدلاً من driverBot.bot.sendMessage
     await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
   } catch (error) {
     console.error('Error approving driver:', error);
