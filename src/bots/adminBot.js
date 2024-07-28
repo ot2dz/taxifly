@@ -4,7 +4,7 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
-const driverBot = require('./driverBot').bot;
+const driverBot = require('./driverBot');
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
 
@@ -199,13 +199,18 @@ bot.onText(/\/approve_(.+)/, async (msg, match) => {
 
     await bot.sendMessage(chatId, 'تمت الموافقة على تسجيل السائق.');
     
-    // استخدام driverBot.sendMessage بدلاً من driverBot.bot.sendMessage
-    await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+    // استخدام driverBot.sendMessage مباشرة
+    if (driverBot && typeof driverBot.sendMessage === 'function') {
+      await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+    } else {
+      console.error('driverBot.sendMessage is not a function');
+    }
   } catch (error) {
     console.error('Error approving driver:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء محاولة الموافقة على تسجيل السائق.');
   }
 });
+
 
 bot.onText(/\/reject_(.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
