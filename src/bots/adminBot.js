@@ -4,8 +4,6 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
-//const { bot: driverBot } = require('./driverBot');
-const driverBotModule = require('./driverBot');
 
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
@@ -327,23 +325,12 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
       driver.registrationStatus = 'approved';
       await driver.save();
       await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
-      
-      // Используем driverBotModule.bot вместо driverBot
-      if (driverBotModule && driverBotModule.bot && typeof driverBotModule.bot.sendMessage === 'function') {
-        await driverBotModule.bot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
-      } else {
-        console.error('driverBotModule.bot.sendMessage is not available');
-      }
+      const { bot: driverBot } = require('./driverBot').bot;
+      await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
     } else {
       await driver.remove();
       await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
-      
-      // Используем driverBotModule.bot вместо driverBot
-      if (driverBotModule && driverBotModule.bot && typeof driverBotModule.bot.sendMessage === 'function') {
-        await driverBotModule.bot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
-      } else {
-        console.error('driverBotModule.bot.sendMessage is not available');
-      }
+      await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
     }
 
     // تحديث قائمة السائقين المعلقين
@@ -355,7 +342,6 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
     await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
   }
 }
-
 
 // تصدير البوت
 module.exports = bot;
