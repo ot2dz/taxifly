@@ -317,6 +317,7 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
   try {
     const driver = await Driver.findOne({ telegramId: driverTelegramId });
     if (!driver) {
+      console.log('Bot object1:', bot);
       await bot.sendMessage(chatId, 'لم يتم العثور على السائق.');
       return;
     }
@@ -326,6 +327,7 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
       await driver.save();
       await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
       const { bot: driverBot } = require('./driverBot').bot;
+      console.log('Bot object2:', bot);
       await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
     } else {
       await driver.remove();
