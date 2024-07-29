@@ -327,23 +327,24 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
       await driver.save();
       await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
       
-      if (driverBot.sendMessage === 'function') {
-        await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+      if (driverBot && typeof driverBot.sendMessage === 'function') {
+        await driverBot.sendMessage(chatId, ' تم قبول طلبك ');
       } else {
         console.error('Error: driverBot.sendMessage is not available');
-        await bot.sendMessage(chatId, 'تم الموافقة على السائق ولكن فشل إرسال رسالة إليه.');
+        await bot.sendMessage(chatId, 'تم رفض السائق ولكن فشل إرسال رسالة إليه.');
       }
+      
     } else {
       await Driver.deleteOne({ _id: driver._id });
       await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
       
-      if (driverBot.sendMessage === 'function') {
+      if (driverBot && typeof driverBot.sendMessage === 'function') {
         await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
       } else {
         console.error('Error: driverBot.sendMessage is not available');
         await bot.sendMessage(chatId, 'تم رفض السائق ولكن فشل إرسال رسالة إليه.');
       }
-    }
+          }
 
     // تحديث قائمة السائقين المعلقين
     await showPendingDrivers(chatId);
