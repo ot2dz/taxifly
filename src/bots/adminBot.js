@@ -4,7 +4,7 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
-const { bot: driverBot } = require('./driverBot');
+
 
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
@@ -322,35 +322,40 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
       return;
     }
 
+    const { bot: driverBot } = require('./driverBot');
+
     if (action === 'approve') {
       driver.registrationStatus = 'approved';
       await driver.save();
       await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
-      
+
       if (driverBot && typeof driverBot.sendMessage === 'function') {
-        await driverBot.sendMessage(chatId, ' تم قبول طلبك ');
+        await driverBot.sendMessage(driver.telegramId, 'تم قبول طلبك كسائق! يمكنك الآن استخدام النظام.');
       } else {
         console.error('Error: driverBot.sendMessage is not available');
-        await bot.sendMessage(chatId, 'تم رفض السائق ولكن فشل إرسال رسالة إليه.');
+        await bot.sendMessage(chatId, 'تمت الموافقة على السائق ولكن فشل إرسال رسالة إليه.');
       }
-      
-    } else {
+    } else if (action === 'reject') {
       await Driver.deleteOne({ _id: driver._id });
       await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
-      
+
       if (driverBot && typeof driverBot.sendMessage === 'function') {
         await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
       } else {
         console.error('Error: driverBot.sendMessage is not available');
         await bot.sendMessage(chatId, 'تم رفض السائق ولكن فشل إرسال رسالة إليه.');
       }
-          }
+    } else {
+      await bot.sendMessage(chatId, 'إجراء غير معروف. الرجاء المحاولة مرة أخرى.');
+      return;
+    }
 
     // تحديث قائمة السائقين المعلقين
     await showPendingDrivers(chatId);
   } catch (error) {
     console.error('Error processing driver approval:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء معالجة طلب الموافقة على السائق.');
+  } finally {
     adminStates.set(chatId, CHAT_STATES.IDLE);
     await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
   }
