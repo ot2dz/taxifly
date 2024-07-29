@@ -4,30 +4,104 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
-//const driverBot = require('./driverBot');
 const { bot: driverBot } = require('./driverBot');
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
 
-bot.onText(/\/start/, (msg) => {
+const adminStates = new Map();
+
+const CHAT_STATES = {
+  IDLE: 'IDLE',
+  AWAITING_MESSAGE_ALL_DRIVERS: 'AWAITING_MESSAGE_ALL_DRIVERS',
+  AWAITING_DRIVER_ID: 'AWAITING_DRIVER_ID',
+  AWAITING_DRIVER_MESSAGE: 'AWAITING_DRIVER_MESSAGE',
+  AWAITING_MESSAGE_ALL_CUSTOMERS: 'AWAITING_MESSAGE_ALL_CUSTOMERS',
+  AWAITING_CUSTOMER_ID: 'AWAITING_CUSTOMER_ID',
+  AWAITING_CUSTOMER_MESSAGE: 'AWAITING_CUSTOMER_MESSAGE',
+  AWAITING_DRIVER_APPROVAL: 'AWAITING_DRIVER_APPROVAL'
+};
+
+const mainMenu = {
+  reply_markup: {
+    keyboard: [
+      ['إرسال رسالة للسائقين', 'إرسال رسالة للزبائن'],
+      ['عرض قائمة السائقين', 'عرض قائمة الزبائن'],
+      ['عرض قائمة الرحلات', 'الموافقة على السائقين']
+    ],
+    resize_keyboard: true
+  }
+};
+
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'مرحبًا بك في بوت الإدارة! استخدم الأوامر التالية:\n' +
-    '/sendToAllDrivers [message]\n' +
-    '/sendToDriver [driverId] [message]\n' +
-    '/sendToAllCustomers [message]\n' +
-    '/sendToCustomer [customerId] [message]\n' +
-    '/getAllDrivers\n' +
-    '/getAllCustomers\n' +
-    '/getAllRides\n' +
-    '/approve_[driverId] للموافقة على سائق\n' +
-    '/reject_[driverId] لرفض سائق'
-  );
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+  await bot.sendMessage(chatId, 'مرحبًا بك في لوحة تحكم الإدارة! اختر إحدى الخيارات التالية:', mainMenu);
 });
 
-bot.onText(/\/sendToAllDrivers (.+)/, async (msg, match) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const message = match[1];
-  
+  const messageText = msg.text;
+
+  if (messageText === '/start') return;
+
+  const currentState = adminStates.get(chatId) || CHAT_STATES.IDLE;
+
+  switch (currentState) {
+    case CHAT_STATES.IDLE:
+      await handleMainMenuInput(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_MESSAGE_ALL_DRIVERS:
+      await sendMessageToAllDrivers(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_DRIVER_ID:
+      await handleDriverIdInput(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_DRIVER_MESSAGE:
+      await sendMessageToDriver(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_MESSAGE_ALL_CUSTOMERS:
+      await sendMessageToAllCustomers(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_CUSTOMER_ID:
+      await handleCustomerIdInput(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_CUSTOMER_MESSAGE:
+      await sendMessageToCustomer(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_DRIVER_APPROVAL:
+      await handleDriverApproval(chatId, messageText);
+      break;
+  }
+});
+
+async function handleMainMenuInput(chatId, messageText) {
+  switch (messageText) {
+    case 'إرسال رسالة للسائقين':
+      adminStates.set(chatId, CHAT_STATES.AWAITING_MESSAGE_ALL_DRIVERS);
+      await bot.sendMessage(chatId, 'الرجاء إدخال الرسالة التي تريد إرسالها لجميع السائقين:');
+      break;
+    case 'إرسال رسالة للزبائن':
+      adminStates.set(chatId, CHAT_STATES.AWAITING_MESSAGE_ALL_CUSTOMERS);
+      await bot.sendMessage(chatId, 'الرجاء إدخال الرسالة التي تريد إرسالها لجميع الزبائن:');
+      break;
+    case 'عرض قائمة السائقين':
+      await getAllDrivers(chatId);
+      break;
+    case 'عرض قائمة الزبائن':
+      await getAllCustomers(chatId);
+      break;
+    case 'عرض قائمة الرحلات':
+      await getAllRides(chatId);
+      break;
+    case 'الموافقة على السائقين':
+      await showPendingDrivers(chatId);
+      break;
+    default:
+      await bot.sendMessage(chatId, 'عذرًا، لم أفهم طلبك. الرجاء اختيار أحد الخيارات المتاحة.', mainMenu);
+  }
+}
+
+async function sendMessageToAllDrivers(chatId, message) {
   try {
     const drivers = await Driver.find({ registrationStatus: 'approved' });
     for (const driver of drivers) {
@@ -37,41 +111,39 @@ bot.onText(/\/sendToAllDrivers (.+)/, async (msg, match) => {
         console.error(`Error sending message to driver ${driver.telegramId}:`, error);
       }
     }
-    bot.sendMessage(chatId, 'تم إرسال الرسالة إلى جميع السائقين.');
+    await bot.sendMessage(chatId, 'تم إرسال الرسالة إلى جميع السائقين.', mainMenu);
   } catch (error) {
     console.error('Error sending message to all drivers:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة.');
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة.', mainMenu);
   }
-});
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+}
 
-bot.onText(/\/sendToDriver (\d+) (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const driverId = match[1];
-  const message = match[2];
-  
+async function handleDriverIdInput(chatId, driverId) {
+  adminStates.set(chatId, CHAT_STATES.AWAITING_DRIVER_MESSAGE);
+  adminStates.set(chatId + '_driverId', driverId);
+  await bot.sendMessage(chatId, 'الرجاء إدخال الرسالة التي تريد إرسالها للسائق:');
+}
+
+async function sendMessageToDriver(chatId, message) {
+  const driverId = adminStates.get(chatId + '_driverId');
   try {
     const driver = await Driver.findOne({ telegramId: driverId, registrationStatus: 'approved' });
     if (driver) {
-      try {
-        await driverBot.sendMessage(driver.telegramId, message);
-        bot.sendMessage(chatId, 'تم إرسال الرسالة إلى السائق.');
-      } catch (error) {
-        console.error(`Error sending message to driver ${driver.telegramId}:`, error);
-        bot.sendMessage(chatId, `حدث خطأ أثناء إرسال الرسالة إلى السائق ${driver.telegramId}. تأكد من أن السائق قد بدأ محادثة مع البوت.`);
-      }
+      await driverBot.sendMessage(driver.telegramId, message);
+      await bot.sendMessage(chatId, 'تم إرسال الرسالة إلى السائق.', mainMenu);
     } else {
-      bot.sendMessage(chatId, 'لم يتم العثور على السائق.');
+      await bot.sendMessage(chatId, 'لم يتم العثور على السائق.', mainMenu);
     }
   } catch (error) {
-    console.error('Error finding driver:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء البحث عن السائق.');
+    console.error('Error sending message to driver:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة.', mainMenu);
   }
-});
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+  adminStates.delete(chatId + '_driverId');
+}
 
-bot.onText(/\/sendToAllCustomers (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const message = match[1];
-  
+async function sendMessageToAllCustomers(chatId, message) {
   try {
     const users = await User.find({});
     for (const user of users) {
@@ -81,40 +153,39 @@ bot.onText(/\/sendToAllCustomers (.+)/, async (msg, match) => {
         console.error(`Error sending message to customer ${user.telegramId}:`, error);
       }
     }
-    bot.sendMessage(chatId, 'تم إرسال الرسالة إلى جميع الزبائن.');
+    await bot.sendMessage(chatId, 'تم إرسال الرسالة إلى جميع الزبائن.', mainMenu);
   } catch (error) {
     console.error('Error sending message to all customers:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة.');
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة.', mainMenu);
   }
-});
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+}
 
-bot.onText(/\/sendToCustomer (\d+) (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const customerId = match[1];
-  const message = match[2];
-  
+async function handleCustomerIdInput(chatId, customerId) {
+  adminStates.set(chatId, CHAT_STATES.AWAITING_CUSTOMER_MESSAGE);
+  adminStates.set(chatId + '_customerId', customerId);
+  await bot.sendMessage(chatId, 'الرجاء إدخال الرسالة التي تريد إرسالها للزبون:');
+}
+
+async function sendMessageToCustomer(chatId, message) {
+  const customerId = adminStates.get(chatId + '_customerId');
   try {
     const user = await User.findOne({ telegramId: customerId });
     if (user) {
-      try {
-        await customerBot.sendMessage(user.telegramId, message);
-        bot.sendMessage(chatId, 'تم إرسال الرسالة إلى الزبون.');
-      } catch (error) {
-        console.error(`Error sending message to customer ${user.telegramId}:`, error);
-        bot.sendMessage(chatId, `حدث خطأ أثناء إرسال الرسالة إلى الزبون ${user.telegramId}. تأكد من أن الزبون قد بدأ محادثة مع البوت.`);
-      }
+      await customerBot.sendMessage(user.telegramId, message);
+      await bot.sendMessage(chatId, 'تم إرسال الرسالة إلى الزبون.', mainMenu);
     } else {
-      bot.sendMessage(chatId, 'لم يتم العثور على الزبون.');
+      await bot.sendMessage(chatId, 'لم يتم العثور على الزبون.', mainMenu);
     }
   } catch (error) {
-    console.error('Error finding customer:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء البحث عن الزبون.');
+    console.error('Error sending message to customer:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة.', mainMenu);
   }
-});
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+  adminStates.delete(chatId + '_customerId');
+}
 
-bot.onText(/\/getAllDrivers/, async (msg) => {
-  const chatId = msg.chat.id;
-  
+async function getAllDrivers(chatId) {
   try {
     const drivers = await Driver.find({});
     if (drivers.length > 0) {
@@ -126,19 +197,18 @@ bot.onText(/\/getAllDrivers/, async (msg) => {
         response += `${(driver.name || '-').padEnd(15)} | ${(driver.phoneNumber || '-').padEnd(12)} | ${(driver.carType || '-').padEnd(11)} | ${driver.registrationStatus}\n`;
       });
       response += '```';
-      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+      await bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
     } else {
-      bot.sendMessage(chatId, 'لا يوجد سائقين مسجلين.');
+      await bot.sendMessage(chatId, 'لا يوجد سائقين مسجلين.');
     }
   } catch (error) {
     console.error('Error fetching drivers:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة السائقين.');
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة السائقين.');
   }
-});
+  await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+}
 
-bot.onText(/\/getAllCustomers/, async (msg) => {
-  const chatId = msg.chat.id;
-  
+async function getAllCustomers(chatId) {
   try {
     const users = await User.find({});
     if (users.length > 0) {
@@ -150,19 +220,18 @@ bot.onText(/\/getAllCustomers/, async (msg) => {
         response += `${(user.phoneNumber || '-').padEnd(15)} | ${(user.address || 'غير محدد').padEnd(16)}\n`;
       });
       response += '```';
-      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+      await bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
     } else {
-      bot.sendMessage(chatId, 'لا يوجد زبائن مسجلين.');
+      await bot.sendMessage(chatId, 'لا يوجد زبائن مسجلين.');
     }
   } catch (error) {
     console.error('Error fetching customers:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الزبائن.');
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الزبائن.');
   }
-});
+  await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+}
 
-bot.onText(/\/getAllRides/, async (msg) => {
-  const chatId = msg.chat.id;
-  
+async function getAllRides(chatId) {
   try {
     const rides = await Ride.find({});
     if (rides.length > 0) {
@@ -174,20 +243,77 @@ bot.onText(/\/getAllRides/, async (msg) => {
         response += `${(ride.userPhone || '-').padEnd(12)} | ${(ride.driverName || '-').padEnd(12)} | ${(ride.userAddress || '-').padEnd(12)}\n`;
       });
       response += '```';
-      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+      await bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
     } else {
-      bot.sendMessage(chatId, 'لا يوجد رحلات مسجلة.');
+      await bot.sendMessage(chatId, 'لا يوجد رحلات مسجلة.');
     }
   } catch (error) {
     console.error('Error fetching rides:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الرحلات.');
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة الرحلات.');
+  }
+  await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+}
+
+async function showPendingDrivers(chatId) {
+  try {
+    const pendingDrivers = await Driver.find({ registrationStatus: 'pending' });
+    if (pendingDrivers.length > 0) {
+      let message = 'السائقون في انتظار الموافقة:\n\n';
+      pendingDrivers.forEach((driver, index) => {
+        message += `${index + 1}. ${driver.name} - ${driver.phoneNumber} - ${driver.carType}\n`;
+      });
+      message += '\nأدخل رقم السائق للموافقة عليه أو رفضه:';
+      adminStates.set(chatId, CHAT_STATES.AWAITING_DRIVER_APPROVAL);
+      adminStates.set(chatId + '_pendingDrivers', pendingDrivers);
+      await bot.sendMessage(chatId, message);
+    } else {
+      await bot.sendMessage(chatId, 'لا يوجد سائقون في انتظار الموافقة.', mainMenu);
+      adminStates.set(chatId, CHAT_STATES.IDLE);
+    }
+  } catch (error) {
+    console.error('Error fetching pending drivers:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة السائقين المعلقين.', mainMenu);
+    adminStates.set(chatId, CHAT_STATES.IDLE);
+  }
+}
+
+async function handleDriverApproval(chatId, input) {
+  const pendingDrivers = adminStates.get(chatId + '_pendingDrivers');
+  const index = parseInt(input) - 1;
+
+  if (isNaN(index) || index < 0 || index >= pendingDrivers.length) {
+    await bot.sendMessage(chatId, 'رقم غير صالح. الرجاء إدخال رقم صحيح من القائمة.');
+    return;
+  }
+
+  const driver = pendingDrivers[index];
+  const approvalMenu = {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: 'موافقة', callback_data: `approve_${driver.telegramId}` },
+          { text: 'رفض', callback_data: `reject_${driver.telegramId}` }
+        ]
+      ]
+    }
+  };
+
+  await bot.sendMessage(chatId, `هل تريد الموافقة على أو رفض السائق: ${driver.name}?`, approvalMenu);
+}
+
+bot.on('callback_query', async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith('approve_') || data.startsWith('reject_')) {
+    const driverTelegramId = data.split('_')[1];
+    const action = data.startsWith('approve_') ? 'approve' : 'reject';
+    await processDriverApproval(chatId, driverTelegramId, action);
+    await bot.answerCallbackQuery(callbackQuery.id);
   }
 });
 
-bot.onText(/\/approve_(.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const driverTelegramId = match[1];
-
+async function processDriverApproval(chatId, driverTelegramId, action) {
   try {
     const driver = await Driver.findOne({ telegramId: driverTelegramId });
     if (!driver) {
@@ -195,46 +321,26 @@ bot.onText(/\/approve_(.+)/, async (msg, match) => {
       return;
     }
 
-    driver.registrationStatus = 'approved';
-    await driver.save();
-
-    await bot.sendMessage(chatId, 'تمت الموافقة على تسجيل السائق.');
-
-    // إضافة سجل للتحقق من وجود driverBot.sendMessage
-    console.log('driverBot:', driverBot);
-    console.log('typeof driverBot.sendMessage:', typeof driverBot.sendMessage);
-
-    if (driverBot && typeof driverBot.sendMessage === 'function') {
-      console.log(`Sending approval message to driver with telegramId: ${driver.telegramId}`);
+    if (action === 'approve') {
+      driver.registrationStatus = 'approved';
+      await driver.save();
+      await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
       await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
-      console.log('Message sent successfully.');
     } else {
-      console.error('driverBot.sendMessage is not a function');
-    }
-  } catch (error) {
-    console.error('Error approving driver:', error);
-    await bot.sendMessage(chatId, 'حدث خطأ أثناء محاولة الموافقة على تسجيل السائق.');
-  }
-});
-
-
-bot.onText(/\/reject_(.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const driverTelegramId = match[1];
-
-  try {
-    const driver = await Driver.findOne({ telegramId: driverTelegramId, registrationStatus: 'pending' });
-    if (driver) {
       await driver.remove();
-      bot.sendMessage(chatId, 'تم رفض السائق وحذف طلب التسجيل.');
+      await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
       await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
-    } else {
-      bot.sendMessage(chatId, 'لم يتم العثور على السائق أو أنه تم الموافقة عليه بالفعل.');
     }
-  } catch (error) {
-    console.error('Error rejecting driver:', error);
-    bot.sendMessage(chatId, 'حدث خطأ أثناء رفض السائق.');
-  }
-});
 
+    // تحديث قائمة السائقين المعلقين
+    await showPendingDrivers(chatId);
+  } catch (error) {
+    console.error('Error processing driver approval:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء معالجة طلب الموافقة على السائق.');
+    adminStates.set(chatId, CHAT_STATES.IDLE);
+    await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+  }
+}
+
+// تصدير البوت
 module.exports = bot;
