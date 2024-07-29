@@ -4,6 +4,7 @@ const Driver = require('../models/Driver');
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 const { bot: customerBot } = require('./customerBot');
+const { bot: driverBot } = require('./driverBot');
 
 
 const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
@@ -317,7 +318,6 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
   try {
     const driver = await Driver.findOne({ telegramId: driverTelegramId });
     if (!driver) {
-      console.log('Bot object1:', bot);
       await bot.sendMessage(chatId, 'لم يتم العثور على السائق.');
       return;
     }
@@ -326,13 +326,12 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
       driver.registrationStatus = 'approved';
       await driver.save();
       await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
-      const { bot: driverBot } = require('./driverBot').bot;
-      console.log('Bot object2:', bot);
-      await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+      console.log('Bot object2:', driverBot.bot);
+      await driverBot.sendMessage(driver.driverTelegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
     } else {
       await driver.remove();
       await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
-      await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
+      await driverBot.sendMessage(driver.driverTelegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
     }
 
     // تحديث قائمة السائقين المعلقين
