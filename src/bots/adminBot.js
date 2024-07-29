@@ -351,11 +351,41 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
     }
 
     // تحديث قائمة السائقين المعلقين
-    await showPendingDrivers(chatId);
+    const pendingDrivers = await Driver.find({ registrationStatus: 'pending' });
+    if (pendingDrivers.length > 0) {
+      await showPendingDrivers(chatId);
+    } else {
+      await bot.sendMessage(chatId, 'لا يوجد سائقون في انتظار الموافقة.');
+      adminStates.set(chatId, CHAT_STATES.IDLE);
+      await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+    }
   } catch (error) {
     console.error('Error processing driver approval:', error);
     await bot.sendMessage(chatId, 'حدث خطأ أثناء معالجة طلب الموافقة على السائق.');
-  } finally {
+    adminStates.set(chatId, CHAT_STATES.IDLE);
+    await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+  }
+}
+async function showPendingDrivers(chatId) {
+  try {
+    const pendingDrivers = await Driver.find({ registrationStatus: 'pending' });
+    if (pendingDrivers.length > 0) {
+      let message = 'السائقون في انتظار الموافقة:\n\n';
+      pendingDrivers.forEach((driver, index) => {
+        message += `${index + 1}. ${driver.name} - ${driver.phoneNumber} - ${driver.carType}\n`;
+      });
+      message += '\nأدخل رقم السائق للموافقة عليه أو رفضه:';
+      adminStates.set(chatId, CHAT_STATES.AWAITING_DRIVER_APPROVAL);
+      adminStates.set(chatId + '_pendingDrivers', pendingDrivers);
+      await bot.sendMessage(chatId, message);
+    } else {
+      await bot.sendMessage(chatId, 'لا يوجد سائقون في انتظار الموافقة.');
+      adminStates.set(chatId, CHAT_STATES.IDLE);
+      await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
+    }
+  } catch (error) {
+    console.error('Error fetching pending drivers:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة السائقين المعلقين.');
     adminStates.set(chatId, CHAT_STATES.IDLE);
     await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
   }
