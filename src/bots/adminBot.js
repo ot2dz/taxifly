@@ -302,17 +302,17 @@ async function handleDriverApproval(chatId, input) {
   await bot.sendMessage(chatId, `هل تريد الموافقة على أو رفض السائق: ${driver.name}?`, approvalMenu);
 }
 
-bot.on('callback_query', async (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
+// bot.on('callback_query', async (callbackQuery) => {
+//   const chatId = callbackQuery.message.chat.id;
+//   const data = callbackQuery.data;
 
-  if (data.startsWith('approve_') || data.startsWith('reject_')) {
-    const driverTelegramId = data.split('_')[1];
-    const action = data.startsWith('approve_') ? 'approve' : 'reject';
-    await processDriverApproval(chatId, driverTelegramId, action);
-    await bot.answerCallbackQuery(callbackQuery.id);
-  }
-});
+//   if (data.startsWith('approve_') || data.startsWith('reject_')) {
+//     const driverTelegramId = data.split('_')[1];
+//     const action = data.startsWith('approve_') ? 'approve' : 'reject';
+//     await processDriverApproval(chatId, driverTelegramId, action);
+//     await bot.answerCallbackQuery(callbackQuery.id);
+//   }
+// });
 
 async function processDriverApproval(chatId, driverTelegramId, action) {
   try {
@@ -323,41 +323,52 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
     }
 
     const { bot: driverBot } = require('./driverBot');
+    let message = '';
 
     if (action === 'approve') {
       driver.registrationStatus = 'approved';
       await driver.save();
-      await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
+      message += `تمت الموافقة على السائق ${driver.name}.\n\n`;
 
       if (driverBot && typeof driverBot.sendMessage === 'function') {
         await driverBot.sendMessage(driver.telegramId, 'تم قبول طلبك كسائق! يمكنك الآن استخدام النظام.');
       } else {
         console.error('Error: driverBot.sendMessage is not available');
-        await bot.sendMessage(chatId, 'تمت الموافقة على السائق ولكن فشل إرسال رسالة إليه.');
+        message += 'ملاحظة: تعذر إرسال رسالة إعلام للسائق.\n\n';
       }
     } else if (action === 'reject') {
       await Driver.deleteOne({ _id: driver._id });
-      await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
+      message += `تم رفض السائق ${driver.name} وحذف طلب التسجيل.\n\n`;
 
       if (driverBot && typeof driverBot.sendMessage === 'function') {
         await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
       } else {
         console.error('Error: driverBot.sendMessage is not available');
-        await bot.sendMessage(chatId, 'تم رفض السائق ولكن فشل إرسال رسالة إليه.');
+        message += 'ملاحظة: تعذر إرسال رسالة إعلام للسائق.\n\n';
       }
     } else {
       await bot.sendMessage(chatId, 'إجراء غير معروف. الرجاء المحاولة مرة أخرى.');
       return;
     }
 
-    // تحديث قائمة السائقين المعلقين
+    // التحقق من وجود سائقين معلقين آخرين
     const pendingDrivers = await Driver.find({ registrationStatus: 'pending' });
     if (pendingDrivers.length > 0) {
-      await showPendingDrivers(chatId);
+      message += 'هناك المزيد من السائقين في انتظار الموافقة. هل ترغب في مراجعتهم الآن؟';
+      const options = {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: 'نعم، عرض السائقين المعلقين', callback_data: 'show_pending_drivers' }],
+            [{ text: 'لا، العودة للقائمة الرئيسية', callback_data: 'back_to_main_menu' }]
+          ]
+        }
+      };
+      await bot.sendMessage(chatId, message, options);
     } else {
-      await bot.sendMessage(chatId, 'لا يوجد سائقون في انتظار الموافقة.');
+      message += 'لا يوجد سائقون آخرون في انتظار الموافقة.\n\n';
+      message += 'اختر الإجراء التالي:';
+      await bot.sendMessage(chatId, message, mainMenu);
       adminStates.set(chatId, CHAT_STATES.IDLE);
-      await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
     }
   } catch (error) {
     console.error('Error processing driver approval:', error);
@@ -366,30 +377,23 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
     await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
   }
 }
-async function showPendingDrivers(chatId) {
-  try {
-    const pendingDrivers = await Driver.find({ registrationStatus: 'pending' });
-    if (pendingDrivers.length > 0) {
-      let message = 'السائقون في انتظار الموافقة:\n\n';
-      pendingDrivers.forEach((driver, index) => {
-        message += `${index + 1}. ${driver.name} - ${driver.phoneNumber} - ${driver.carType}\n`;
-      });
-      message += '\nأدخل رقم السائق للموافقة عليه أو رفضه:';
-      adminStates.set(chatId, CHAT_STATES.AWAITING_DRIVER_APPROVAL);
-      adminStates.set(chatId + '_pendingDrivers', pendingDrivers);
-      await bot.sendMessage(chatId, message);
-    } else {
-      await bot.sendMessage(chatId, 'لا يوجد سائقون في انتظار الموافقة.');
-      adminStates.set(chatId, CHAT_STATES.IDLE);
-      await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
-    }
-  } catch (error) {
-    console.error('Error fetching pending drivers:', error);
-    await bot.sendMessage(chatId, 'حدث خطأ أثناء جلب قائمة السائقين المعلقين.');
-    adminStates.set(chatId, CHAT_STATES.IDLE);
-    await bot.sendMessage(chatId, 'اختر الإجراء التالي:', mainMenu);
-  }
-}
 
+// أضف هذا الجزء إلى معالج callback_query الموجود
+bot.on('callback_query', async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data === 'show_pending_drivers') {
+    await showPendingDrivers(chatId);
+  } else if (data === 'back_to_main_menu') {
+    adminStates.set(chatId, CHAT_STATES.IDLE);
+    await bot.sendMessage(chatId, 'تم العودة إلى القائمة الرئيسية.', mainMenu);
+  } else if (data.startsWith('approve_') || data.startsWith('reject_')) {
+    const driverTelegramId = data.split('_')[1];
+    const action = data.startsWith('approve_') ? 'approve' : 'reject';
+    await processDriverApproval(chatId, driverTelegramId, action);
+  }
+  await bot.answerCallbackQuery(callbackQuery.id);
+});
 // تصدير البوت
 module.exports = bot;
