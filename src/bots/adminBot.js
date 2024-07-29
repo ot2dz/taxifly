@@ -326,12 +326,23 @@ async function processDriverApproval(chatId, driverTelegramId, action) {
       driver.registrationStatus = 'approved';
       await driver.save();
       await bot.sendMessage(chatId, `تمت الموافقة على السائق ${driver.name}.`);
-      console.log('Bot object2:', driverBot.bot);
-      await driverBot.sendMessage(driver.driverTelegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+      
+      if (driverBot.sendMessage === 'function') {
+        await driverBot.sendMessage(driver.telegramId, 'تمت الموافقة على تسجيلك كسائق! يمكنك الآن استخدام النظام.');
+      } else {
+        console.error('Error: driverBot.sendMessage is not available');
+        await bot.sendMessage(chatId, 'تم الموافقة على السائق ولكن فشل إرسال رسالة إليه.');
+      }
     } else {
-      await driver.remove();
+      await Driver.deleteOne({ _id: driver._id });
       await bot.sendMessage(chatId, `تم رفض السائق ${driver.name} وحذف طلب التسجيل.`);
-      await driverBot.sendMessage(driver.driverTelegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
+      
+      if (driverBot.sendMessage === 'function') {
+        await driverBot.sendMessage(driver.telegramId, 'عذرًا، تم رفض طلب تسجيلك كسائق. يمكنك المحاولة مرة أخرى لاحقًا أو الاتصال بالإدارة للمزيد من المعلومات.');
+      } else {
+        console.error('Error: driverBot.sendMessage is not available');
+        await bot.sendMessage(chatId, 'تم رفض السائق ولكن فشل إرسال رسالة إليه.');
+      }
     }
 
     // تحديث قائمة السائقين المعلقين
