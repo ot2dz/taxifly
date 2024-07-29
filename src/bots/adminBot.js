@@ -19,13 +19,19 @@ const CHAT_STATES = {
   AWAITING_MESSAGE_ALL_CUSTOMERS: 'AWAITING_MESSAGE_ALL_CUSTOMERS',
   AWAITING_CUSTOMER_ID: 'AWAITING_CUSTOMER_ID',
   AWAITING_CUSTOMER_MESSAGE: 'AWAITING_CUSTOMER_MESSAGE',
-  AWAITING_DRIVER_APPROVAL: 'AWAITING_DRIVER_APPROVAL'
+  AWAITING_DRIVER_APPROVAL: 'AWAITING_DRIVER_APPROVAL',
+  AWAITING_DRIVER_ID_FOR_MESSAGE: 'AWAITING_DRIVER_ID_FOR_MESSAGE',
+  AWAITING_CUSTOMER_ID_FOR_MESSAGE: 'AWAITING_CUSTOMER_ID_FOR_MESSAGE',
+  AWAITING_MESSAGE_FOR_SPECIFIC_DRIVER: 'AWAITING_MESSAGE_FOR_SPECIFIC_DRIVER',
+  AWAITING_MESSAGE_FOR_SPECIFIC_CUSTOMER: 'AWAITING_MESSAGE_FOR_SPECIFIC_CUSTOMER'
+
 };
 
 const mainMenu = {
   reply_markup: {
     keyboard: [
       ['إرسال رسالة للسائقين', 'إرسال رسالة للزبائن'],
+      ['إرسال رسالة لسائق محدد', 'إرسال رسالة لزبون محدد'],
       ['عرض قائمة السائقين', 'عرض قائمة الزبائن'],
       ['عرض قائمة الرحلات', 'الموافقة على السائقين']
     ],
@@ -72,6 +78,18 @@ bot.on('message', async (msg) => {
     case CHAT_STATES.AWAITING_DRIVER_APPROVAL:
       await handleDriverApproval(chatId, messageText);
       break;
+    case CHAT_STATES.AWAITING_DRIVER_ID_FOR_MESSAGE:
+        await handleDriverIdInputForMessage(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_MESSAGE:
+        await handleCustomerIdInputForMessage(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_MESSAGE_FOR_SPECIFIC_DRIVER:
+        await sendMessageToSpecificDriver(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_MESSAGE_FOR_SPECIFIC_CUSTOMER:
+        await sendMessageToSpecificCustomer(chatId, messageText);
+    break;
   }
 });
 
@@ -97,6 +115,15 @@ async function handleMainMenuInput(chatId, messageText) {
     case 'الموافقة على السائقين':
       await showPendingDrivers(chatId);
       break;
+    case 'إرسال رسالة لسائق محدد':
+        adminStates.set(chatId, CHAT_STATES.AWAITING_DRIVER_ID_FOR_MESSAGE);
+        await bot.sendMessage(chatId, 'الرجاء إدخال معرف السائق (Telegram ID) الذي تريد إرسال رسالة له:');
+      break;
+    case 'إرسال رسالة لزبون محدد':
+        adminStates.set(chatId, CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_MESSAGE);
+        await bot.sendMessage(chatId, 'الرجاء إدخال معرف الزبون (Telegram ID) الذي تريد إرسال رسالة له:');
+      break;
+  
     default:
       await bot.sendMessage(chatId, 'عذرًا، لم أفهم طلبك. الرجاء اختيار أحد الخيارات المتاحة.', mainMenu);
   }
@@ -395,5 +422,68 @@ bot.on('callback_query', async (callbackQuery) => {
   }
   await bot.answerCallbackQuery(callbackQuery.id);
 });
+
+async function handleDriverIdInputForMessage(chatId, driverId) {
+  const driver = await Driver.findOne({ telegramId: driverId });
+  if (driver) {
+    adminStates.set(chatId, CHAT_STATES.AWAITING_MESSAGE_FOR_SPECIFIC_DRIVER);
+    adminStates.set(chatId + '_specificDriverId', driverId);
+    await bot.sendMessage(chatId, `تم العثور على السائق ${driver.name}. الرجاء إدخال الرسالة التي تريد إرسالها له:`);
+  } else {
+    await bot.sendMessage(chatId, 'لم يتم العثور على سائق بهذا المعرف. الرجاء التحقق من المعرف وإعادة المحاولة.', mainMenu);
+    adminStates.set(chatId, CHAT_STATES.IDLE);
+  }
+}
+
+async function handleCustomerIdInputForMessage(chatId, customerId) {
+  const customer = await User.findOne({ telegramId: customerId });
+  if (customer) {
+    adminStates.set(chatId, CHAT_STATES.AWAITING_MESSAGE_FOR_SPECIFIC_CUSTOMER);
+    adminStates.set(chatId + '_specificCustomerId', customerId);
+    await bot.sendMessage(chatId, `تم العثور على الزبون. الرجاء إدخال الرسالة التي تريد إرسالها له:`);
+  } else {
+    await bot.sendMessage(chatId, 'لم يتم العثور على زبون بهذا المعرف. الرجاء التحقق من المعرف وإعادة المحاولة.', mainMenu);
+    adminStates.set(chatId, CHAT_STATES.IDLE);
+  }
+}
+
+async function sendMessageToSpecificDriver(chatId, message) {
+  const driverId = adminStates.get(chatId + '_specificDriverId');
+  try {
+    const driver = await Driver.findOne({ telegramId: driverId });
+    if (driver) {
+      const { bot: driverBot } = require('./driverBot');
+      await driverBot.sendMessage(driverId, message);
+      await bot.sendMessage(chatId, `تم إرسال الرسالة بنجاح إلى السائق ${driver.name}.`, mainMenu);
+    } else {
+      await bot.sendMessage(chatId, 'حدث خطأ: لم يتم العثور على السائق.', mainMenu);
+    }
+  } catch (error) {
+    console.error('Error sending message to specific driver:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة للسائق.', mainMenu);
+  }
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+  adminStates.delete(chatId + '_specificDriverId');
+}
+
+async function sendMessageToSpecificCustomer(chatId, message) {
+  const customerId = adminStates.get(chatId + '_specificCustomerId');
+  try {
+    const customer = await User.findOne({ telegramId: customerId });
+    if (customer) {
+      const { bot: customerBot } = require('./customerBot');
+      await customerBot.sendMessage(customerId, message);
+      await bot.sendMessage(chatId, 'تم إرسال الرسالة بنجاح إلى الزبون.', mainMenu);
+    } else {
+      await bot.sendMessage(chatId, 'حدث خطأ: لم يتم العثور على الزبون.', mainMenu);
+    }
+  } catch (error) {
+    console.error('Error sending message to specific customer:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إرسال الرسالة للزبون.', mainMenu);
+  }
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+  adminStates.delete(chatId + '_specificCustomerId');
+}
+
 // تصدير البوت
 module.exports = bot;
