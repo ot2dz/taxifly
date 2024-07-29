@@ -125,7 +125,7 @@ async function handleCarTypeInput(chatId, carType) {
     await bot.sendMessage(chatId, 'تم إرسال طلبك للمراجعة. سيتم إعلامك عند الموافقة على طلبك.');
 
     if (adminChatId) {
-      await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\n/approve_${chatId} للموافقة\n/reject_${chatId} لرفض`);
+      await adminBot.sendMessage(adminChatId, `طلب جديد لتسجيل السائق:\nالاسم: ${name}\nالهاتف: ${phone}\nنوع السيارة: ${carType}\nللموافقة أو الرفض، استخدم قائمة "الموافقة على السائقين" في القائمة الرئيسية.`);
     } else {
       console.error('ADMIN_CHAT_ID is not defined in config.');
     }
