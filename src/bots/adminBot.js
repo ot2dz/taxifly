@@ -23,6 +23,8 @@ const CHAT_STATES = {
   AWAITING_DRIVER_ID_FOR_MESSAGE: 'AWAITING_DRIVER_ID_FOR_MESSAGE',
   AWAITING_CUSTOMER_ID_FOR_MESSAGE: 'AWAITING_CUSTOMER_ID_FOR_MESSAGE',
   AWAITING_MESSAGE_FOR_SPECIFIC_DRIVER: 'AWAITING_MESSAGE_FOR_SPECIFIC_DRIVER',
+  AWAITING_CUSTOMER_ID_FOR_BAN: 'AWAITING_CUSTOMER_ID_FOR_BAN',
+  AWAITING_CUSTOMER_ID_FOR_UNBAN: 'AWAITING_CUSTOMER_ID_FOR_UNBAN',
   AWAITING_MESSAGE_FOR_SPECIFIC_CUSTOMER: 'AWAITING_MESSAGE_FOR_SPECIFIC_CUSTOMER'
 
 };
@@ -33,7 +35,8 @@ const mainMenu = {
       ['إرسال رسالة للسائقين', 'إرسال رسالة للزبائن'],
       ['إرسال رسالة لسائق محدد', 'إرسال رسالة لزبون محدد'],
       ['عرض قائمة السائقين', 'عرض قائمة الزبائن'],
-      ['عرض قائمة الرحلات', 'الموافقة على السائقين']
+      ['عرض قائمة الرحلات', 'الموافقة على السائقين'],
+      ['حظر زبون', 'إلغاء حظر زبون'] // إضافة أزرار جديدة
     ],
     resize_keyboard: true
   }
@@ -54,6 +57,12 @@ bot.on('message', async (msg) => {
   const currentState = adminStates.get(chatId) || CHAT_STATES.IDLE;
 
   switch (currentState) {
+    case CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_BAN:
+      await handleCustomerIdInputForBan(chatId, messageText);
+      break;
+    case CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_UNBAN:
+      await handleCustomerIdInputForUnban(chatId, messageText);
+      break;
     case CHAT_STATES.IDLE:
       await handleMainMenuInput(chatId, messageText);
       break;
@@ -123,7 +132,14 @@ async function handleMainMenuInput(chatId, messageText) {
         adminStates.set(chatId, CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_MESSAGE);
         await bot.sendMessage(chatId, 'الرجاء إدخال معرف الزبون (Telegram ID) الذي تريد إرسال رسالة له:');
       break;
-  
+      case 'حظر زبون':
+        adminStates.set(chatId, CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_BAN);
+        await bot.sendMessage(chatId, 'الرجاء إدخال معرف الزبون (Telegram ID) الذي تريد حظره:');
+        break;
+      case 'إلغاء حظر زبون':
+        adminStates.set(chatId, CHAT_STATES.AWAITING_CUSTOMER_ID_FOR_UNBAN);
+        await bot.sendMessage(chatId, 'الرجاء إدخال معرف الزبون (Telegram ID) الذي تريد إلغاء حظره:');
+        break;
     default:
       await bot.sendMessage(chatId, 'عذرًا، لم أفهم طلبك. الرجاء اختيار أحد الخيارات المتاحة.', mainMenu);
   }
@@ -484,6 +500,41 @@ async function sendMessageToSpecificCustomer(chatId, message) {
   adminStates.set(chatId, CHAT_STATES.IDLE);
   adminStates.delete(chatId + '_specificCustomerId');
 }
+
+async function handleCustomerIdInputForBan(chatId, customerId) {
+  try {
+    const user = await User.findOne({ telegramId: customerId });
+    if (user) {
+      user.isBanned = true;
+      await user.save();
+      await bot.sendMessage(chatId, 'تم حظر الزبون بنجاح.', mainMenu);
+    } else {
+      await bot.sendMessage(chatId, 'لم يتم العثور على الزبون.', mainMenu);
+    }
+  } catch (error) {
+    console.error('Error banning customer:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء حظر الزبون.', mainMenu);
+  }
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+}
+
+async function handleCustomerIdInputForUnban(chatId, customerId) {
+  try {
+    const user = await User.findOne({ telegramId: customerId });
+    if (user) {
+      user.isBanned = false;
+      await user.save();
+      await bot.sendMessage(chatId, 'تم إلغاء حظر الزبون بنجاح.', mainMenu);
+    } else {
+      await bot.sendMessage(chatId, 'لم يتم العثور على الزبون.', mainMenu);
+    }
+  } catch (error) {
+    console.error('Error unbanning customer:', error);
+    await bot.sendMessage(chatId, 'حدث خطأ أثناء إلغاء حظر الزبون.', mainMenu);
+  }
+  adminStates.set(chatId, CHAT_STATES.IDLE);
+}
+
 
 // تصدير البوت
 module.exports = bot;

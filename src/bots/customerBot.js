@@ -31,6 +31,11 @@ bot.onText(/\/start/, async (msg) => {
   try {
     const user = await User.findOne({ telegramId: chatId });
 
+    if (user && user.isBanned) {
+      await bot.sendMessage(chatId, 'أنت محظور من استخدام هذه الخدمة.');
+      return;
+    }
+
     if (user) {
       userStates.set(chatId, CHAT_STATES.IDLE);
       await bot.sendMessage(chatId, 'مرحبًا بك مجددًا! لطلب طاكسي ارسل رقم 1 هنا', mainMenu);

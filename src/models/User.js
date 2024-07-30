@@ -25,7 +25,9 @@ const userSchema = new mongoose.Schema({
   lastActivity: {
     type: Date,
     default: Date.now
-  }
+  },
+  isBanned: { type: Boolean, default: false }  // إضافة هذا الحقل
+
 });
 
 const User = mongoose.model('User', userSchema);
