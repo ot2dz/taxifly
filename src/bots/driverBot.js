@@ -114,7 +114,8 @@ async function handleCarTypeInput(chatId, carType) {
       name: name,
       phoneNumber: phone,
       carType: carType,
-      registrationStatus: 'pending'
+      registrationStatus: 'pending',
+      registrationDate: new Date() // يتم تحديد التاريخ عند التسجيل
     });
 
     await newDriver.save();
