@@ -7,7 +7,7 @@ const { bot: customerBot } = require('./customerBot');
 
 
 
-const bot = new TelegramBot(config.ADMIN_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(config.ADMIN_BOT_TOKEN);
 
 const adminStates = new Map();
 

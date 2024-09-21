@@ -19,6 +19,8 @@
     "node-telegram-bot-api": "^0.66.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@flydotio/dockerfile": "^0.5.8",
+    "nodemon": "^3.1.4",
+    "wrangler": "^3.78.6"
   }
 }

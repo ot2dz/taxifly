@@ -6,7 +6,7 @@ const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
 const adminBot = require('./adminBot');
 
-const bot = new TelegramBot(config.DRIVER_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
 const adminChatId = config.ADMIN_CHAT_ID;
 
 const driverStates = new Map();
