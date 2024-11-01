@@ -8,13 +8,14 @@ const userSchema = new mongoose.Schema({
     unique: true
   },
   name: {
-    type: String
-    },
+    type: String,
+    required: true // قم بتعيين هذا الحقل على مطلوب
+  },
   phoneNumber: {
     type: String,
     required: true
   },
-  address: {  // إضافة حقل العنوان
+  address: {
     type: String,
     required: false
   },
@@ -26,9 +27,9 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  isBanned: { type: Boolean, default: false }  // إضافة هذا الحقل
-
+  isBanned: { type: Boolean, default: false }
 });
+
 
 const User = mongoose.model('User', userSchema);
 
