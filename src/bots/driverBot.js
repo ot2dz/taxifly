@@ -5,12 +5,13 @@ const User = require('../models/User');
 const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
 const adminBot = require('./adminBot');
+const { rideRequests, addRideRequest, removeRideRequest } = require('./sharedRideFunctions');
+
 
 const bot = new TelegramBot(config.DRIVER_BOT_TOKEN);
 const adminChatId = config.ADMIN_CHAT_ID;
 
 const driverStates = new Map();
-const rideRequests = new Map();
 
 const CHAT_STATES = {
   IDLE: 'IDLE',
@@ -204,7 +205,8 @@ async function notifyDrivers(user, address) {
   }
 
   const rideId = Date.now().toString();
-  rideRequests.set(rideId, { userId: user.telegramId, status: 'pending' });
+  addRideRequest(rideId, user.telegramId); // استخدام addRideRequest لإضافة الطلب
+  console.log('Added rideRequest in notifyDrivers:', rideRequests);  // عرض جميع الطلبات للتحقق
 
   for (const driver of drivers) {
     const message = `🚖 **طلب جديد لزبون يحتاج إلى طاكسي!**\n\n📍 **عنوان الزبون:** ${address}\n\n⬇️ **اضغط على الزر في الأسفل لقبول الطلب**`;
@@ -245,20 +247,34 @@ bot.on('callback_query', async (callbackQuery) => {
 async function handleAcceptRide(driverId, rideId) {
   try {
     const rideRequest = rideRequests.get(rideId);
+
+    // تأكد من أن الطلب موجود بالفعل
     if (!rideRequest) {
       await bot.sendMessage(driverId, 'عذرًا، هذا الطلب لم يعد متاحًا.');
       return;
     }
 
-    if (rideRequest.status === 'accepted') {
-      await bot.sendMessage(driverId, 'عذرًا، هذا الطلب تم قبوله بالفعل.');
+    // سجل حالة الطلب الحالية للمساعدة في التصحيح
+    console.log('Current status of rideRequest:', rideRequest.status);
+
+    // التحقق من حالة "cancelled" قبل قبول الطلب
+    if (rideRequest.status === 'cancelled') {
+      await bot.sendMessage(driverId, '❌ عذرًا، لقد قام الزبون بإلغاء هذا الطلب.');
       return;
     }
 
+    // التحقق من أن الطلب لم يتم قبوله من قبل
+    if (rideRequest.status === 'accepted') {
+      await bot.sendMessage(driverId, 'عذرًا، هذا الطلب تم قبوله بالفعل من سائق آخر.');
+      return;
+    }
+
+    // إذا لم يتم إلغاء الطلب أو قبوله من قبل، تحديث الحالة إلى "accepted"
     const driver = await Driver.findOne({ telegramId: driverId });
     const user = await User.findOne({ telegramId: rideRequest.userId });
+
     if (driver && user) {
-      rideRequest.status = 'accepted';
+      rideRequest.status = 'accepted';  // تحديث الحالة في الذاكرة
 
       const newRide = new Ride({
         userId: rideRequest.userId,
@@ -271,6 +287,7 @@ async function handleAcceptRide(driverId, rideId) {
       });
 
       await newRide.save();
+      
 
       await handleDriverAcceptance(driverId, rideRequest.userId);
     } else {
@@ -281,28 +298,32 @@ async function handleAcceptRide(driverId, rideId) {
     await bot.sendMessage(driverId, 'حدث خطأ أثناء قبول الطلب. الرجاء المحاولة مرة أخرى لاحقًا.');
   }
 }
+
+
 async function handleDriverAcceptance(driverId, userId) {
   try {
     const user = await User.findOne({ telegramId: userId });
 
     if (user) {
       const userPhoneNumber = user.phoneNumber;
-      await bot.sendMessage(driverId, '✅ **تم قبول طلبك!**\n\n📞 **الزبون في انتظارك، قم بالاتصال به الآن**:', { parse_mode: 'Markdown' });
-      await bot.sendMessage(driverId, `${userPhoneNumber}`);
       const message = `💵 **أسعار الخدمة:**\n\n` +
                 `- 📍 **وسط عين صالح**: 15 ألف\n` +
                 `- 📍 **البركة**: 25 ألف\n` +
                 `- 📍 **الساهلتين**: 55 ألف`;
 
       await bot.sendMessage(driverId, message, { parse_mode: 'Markdown' });
-  
-
+      await bot.sendMessage(driverId, '✅ **تم قبول طلبك!**\n\n📞 **الزبون في انتظارك، قم بالاتصال به الآن**:', { parse_mode: 'Markdown' });
+      await bot.sendMessage(driverId, `${userPhoneNumber}`);
+      
       // إعلام الزبون بأن طلبه قد تم قبوله
       const customerBot = require('./customerBot').bot;
+      const driver = await Driver.findOne({ telegramId: driverId });
       await customerBot.sendMessage(
         userId,
         '🙏 **شكرًا لك!**\n\n' +
         '🚕 لقد تم **قبول طلبك**. سيتم الاتصال بك من طرف السائق الآن.\n\n' +
+        `📞 **رقم هاتف السائق**: ${driver.phoneNumber}\n` +
+        `🚗 **نوع السيارة**: ${driver.carType}\n\n` +
         '**💵 أسعار الخدمة:**\n' +
         '- 📍 **وسط عين صالح**: 15 ألف\n' +
         '- 📍 **البركة**: 25 ألف\n' +
@@ -310,6 +331,7 @@ async function handleDriverAcceptance(driverId, userId) {
         '📝 **لطلب طاكسي**، فقط أرسل **رقم 1** هنا في أي وقت! 🚖',
         { parse_mode: 'Markdown' }  // لتفعيل تنسيق النصوص بخط عريض
       );
+
       
       
       // حذف طلب الرحلة من القائمة
@@ -394,7 +416,6 @@ async function handleMainMenuInput(chatId, messageText) {
 module.exports = {
   bot,
   notifyDrivers,
-  rideRequests,
   CHAT_STATES
 };
 
