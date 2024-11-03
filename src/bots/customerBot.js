@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const User = require('../models/User');
 const Driver = require('../models/Driver');
-const { removeRideRequest } = require('./sharedRideFunctions');
+const { rideRequests, addRideRequest, removeRideRequest } = require('./sharedRideFunctions');
 
 const bot = new TelegramBot(config.CUSTOMER_BOT_TOKEN);
 
@@ -157,9 +157,31 @@ async function requestTaxi(chatId) {
     userStates.set(chatId, CHAT_STATES.AWAITING_PHONE);
     return;
   }
+
+  // التحقق من وجود طلب جاري فقط إذا كان الطلب في حالة "pending"
+  let hasPendingRequest = false;
+  for (const [rideId, request] of rideRequests.entries()) {
+    if (request.userId === chatId && request.status === 'accepted') {
+      hasPendingRequest = true;
+      break;
+    }
+  }
+
+  // السماح بإنشاء طلب جديد إذا لم يكن هناك طلب جاري
+  if (hasPendingRequest) {
+    await bot.sendMessage(chatId, '🚕 لديك طلب جاري بالفعل. لا يمكنك إنشاء طلب جديد حتى يتم إكمال أو إلغاء الطلب الحالي.');
+    return;
+  }
+
+  // إذا لم يكن هناك طلب جاري، السماح بإنشاء طلب جديد
   userStates.set(chatId, CHAT_STATES.AWAITING_ADDRESS);
   await bot.sendMessage(chatId, 'الرجاء إدخال عنوانك الحالي:');
+  
 }
+
+
+
+
 
 async function handleAddressInput(chatId, address) {
   try {
@@ -170,11 +192,35 @@ async function handleAddressInput(chatId, address) {
       return;
     }
 
+    // التحقق من عدم وجود طلب معلق لنفس المستخدم
+    for (let request of rideRequests.values()) {
+      if (request.userId === chatId && request.status === 'pending') {
+        await bot.sendMessage(chatId, 'لديك طلب جاري بالفعل. لا يمكنك إنشاء طلب جديد حتى يتم إكمال الطلب الحالي أو إلغاؤه.');
+        return;
+      }
+    }
+
     user.address = address;  // تحديث عنوان المستخدم
     await user.save();
 
     userStates.set(chatId, CHAT_STATES.WAITING_FOR_TAXI);
-    await bot.sendMessage(chatId, 'تم استلام طلبك. جاري البحث عن سائق...');
+
+    // إضافة الطلب إلى rideRequests
+    const rideId = Date.now().toString();
+    addRideRequest(rideId, chatId); // إضافة الطلب باستخدام addRideRequest
+
+    const message = 'تم استلام طلبك. جاري البحث عن سائق... 🚕';
+    const options = {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '❌ إلغاء الطلب', callback_data: 'cancel_order' }
+          ]
+        ]
+      }
+    };
+
+    await bot.sendMessage(chatId, message, options);
 
     const driverBot = require('./driverBot');
     await driverBot.notifyDrivers(user, address);
@@ -187,6 +233,34 @@ async function handleAddressInput(chatId, address) {
     userStates.set(chatId, CHAT_STATES.IDLE);
   }
 }
+
+bot.on('callback_query', async (callbackQuery) => {
+  console.log('Received a callback query:', callbackQuery);  // تأكيد استقبال callback_query
+  const userId = callbackQuery.from.id;
+  const data = callbackQuery.data;
+
+  if (data === 'cancel_order') {
+    console.log('Current rideRequests before cancellation:', rideRequests);  // تحقق من محتويات rideRequests قبل التحديث
+
+    // تحديث حالة جميع الطلبات الخاصة بنفس userId إلى "cancelled"
+    for (let [rideId, request] of rideRequests.entries()) {
+      // المقارنة بعد تحويل كل من userId و request.userId إلى نص
+      if (String(request.userId) === String(userId) && request.status === 'pending') {
+        request.status = 'cancelled';
+      }
+    }
+    
+    console.log('Cancelled rideRequests:', rideRequests);  // تحقق من تحديث الطلبات بعد التعديل
+
+    await bot.sendMessage(userId, '❌ تم إلغاء طلبك بنجاح.');
+    await bot.answerCallbackQuery(callbackQuery.id);
+  }
+});
+
+
+
+
+
 
 async function showUserInfo(chatId) {
   try {
